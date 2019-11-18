@@ -2,6 +2,22 @@
 
 A simple class for normalizing external entity reference sources' URIs (Geonames, GND, etc. URIs).
 
+Most entity reference sources properly resolves many variants of an entity URI, e.g. for the Geonames 
+all URLs below represent exactly the same entity (and it's definitely not a full list):
+
+* http://geonames.org/2761369
+* https://geonames.org/2761369
+* http://www.geonames.org/2761369
+* https://www.geonames.org/2761369
+* http://geonames.org/2761369/vienna
+* https://geonames.org/2761369/vienna
+* http://www.geonames.org/2761369/vienna
+* https://www.geonames.org/2761369/vienna
+
+Because of that entity URIs can't be simply tested for equality without normalization.
+
+This package provides a simple framework for performing such normalization.
+
 ## Installation
 
 ```
