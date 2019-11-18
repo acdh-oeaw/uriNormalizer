@@ -1,0 +1,25 @@
+{
+    "name": "acdh-oeaw/uri-normalizer",
+    "description": "A simple class for normalizing external entity reference sources' URIs (Geonames, GND, etc. URIs).",
+    "keywords": [],
+    "homepage": "https://github.com/acdh-oeaw/uriNormalizer",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Mateusz Żółtak",
+            "email": "mzoltak@oeaw.ac.at"
+        }
+    ],
+    "require": {
+        "php": ">= 7.1",
+        "acdh-oeaw/easyrdf": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "acdhOeaw\\": "src/acdhOeaw"
+        }
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^8.4"
+    }
+}
