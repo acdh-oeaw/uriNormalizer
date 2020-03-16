@@ -26,6 +26,7 @@
 
 namespace acdhOeaw;
 
+use RuntimeException;
 use EasyRdf\Resource;
 
 /**
@@ -69,10 +70,10 @@ class UriNormalizer {
      * 
      * @param Resource $res metadata to be processed
      * @param string $idProp id property URI (if not provided, value passed to 
-     *   the object constructor is used)
+     *   the `UriNormalizer::init()` is used)
      * @see normalizeMeta()
      */
-    static public function gNormalizeMeta(Resource $res, string $idProp = ''): void {
+    static public function gNormalizeMeta(Resource $res, string $idProp): void {
         self::$obj->normalizeMeta($res, $idProp);
     }
     
@@ -131,6 +132,10 @@ class UriNormalizer {
      */
     public function normalizeMeta(Resource $res, string $idProp = ''): void {
         $idProp = empty($idProp) ? $this->idProp : $idProp;
+        if (empty($idProp)) {
+            throw new RuntimeException('Id property not defined');
+        }
+        
         foreach ($res->allResources($idProp) as $id) {
             $res->deleteResource($idProp, $id);
             $res->addResource($idProp, $this->normalize((string) $id));
