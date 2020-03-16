@@ -29,7 +29,7 @@ namespace acdhOeaw;
 use EasyRdf\Resource;
 
 /**
- * A simply utility class standardizing the URIs
+ * A simply utility class normalizing the URIs
  *
  * @author zozlak
  */
@@ -40,17 +40,17 @@ class UriNormalizer {
     /**
      * Initializes a global singleton instance of the UriNormalizer.
      * 
-     * @param array $mappings array of value mappings. Standarization is made by
+     * @param array $mappings array of value mappings. Normalization is made by
      *   running a `preg_replace($mappingKey, $mappingValue, $valueToMap)`
      * @param string $idProp a default RDF property to be used by the 
-     *   `standardizeMeta()` method
+     *   `normalizeMeta()` method
      */
     static public function init(array $mappings = [], string $idProp = '') {
         self::$obj = new UriNormalizer($mappings, $idProp);
     }
 
     /**
-     * A static version of the standardize() method.
+     * A static version of the normalize() method.
      * 
      * Call `UriNormalizer::init()` before first use.
      * 
@@ -63,7 +63,7 @@ class UriNormalizer {
     }
     
     /**
-     * A static version of the standardizeMeta() method.
+     * A static version of the normalizeMeta() method.
      * 
      * Call `UriNormalizer::init()` before first use.
      * 
@@ -89,10 +89,10 @@ class UriNormalizer {
     private $idProp;
     
     /**
-     * @param array $mappings array of value mappings. Standarization is made by
+     * @param array $mappings array of value mappings. Normalization is made by
      *   running a `preg_replace($mappingKey, $mappingValue, $valueToMap)`
      * @param string $idProp a default RDF property to be used by the 
-     *   `standardizeMeta()` method
+     *   `normalizeMeta()` method
      */
     public function __construct(array $mappings = [], string $idProp = '') {
         $this->mappings = $mappings;
@@ -100,12 +100,12 @@ class UriNormalizer {
     }
     
     /**
-     * Returns a standardized URIs.
+     * Returns a normalized URIs.
      * 
      * If the passed URI doesn't match any rule it is returned without
      * modification.
      * 
-     * @param string $uri URI to be standardized
+     * @param string $uri URI to be normalized
      * @return string
      */
     public function normalize(string $uri): string {
