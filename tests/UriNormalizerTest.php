@@ -41,7 +41,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $mappings = [
             '|^https?://([^.]*[.])?geonames[.]org/([0-9]+)(/.*)?$|'                              => 'https://www.geonames.org/\2',
             '|^https?://([^.]*[.])?gazetteer[.]dainst[.]org/([A-Za-z]+/)*([0-9]+)([^0-9].*)?$|'  => 'https://gazetteer.dainst.org/place/\3',
-            '|^https?://([^.]*[.])?pleiades[.]stoa[.]org/places/([0-9]+)(/.*)?$|'                => 'https://www.pleiades.stoa.org/places/\2',
+            '|^https?://([^.]*[.])?pleiades[.]stoa[.]org/places/([0-9]+)(/.*)?$|'                => 'https://pleiades.stoa.org/places/\2',
             '|^https?://([^.]*[.])?viaf[.]org/viaf/([0-9]+)(/.*)?$|'                             => 'https://viaf.org/viaf/\2',
             '|^https?://([^.]*[.])?d-nb[.]info/gnd/([0-9]+-[0-9]+)$|'                            => 'https://d-nb.info/gnd/\2',
             '|^https?://([^.]*[.])?wikidata[.]org/([A-Za-z:]+/)*(Q[0-9]+)([^[0-9].*)?$|'         => 'https://www.wikidata.org/entity/\3',
@@ -93,7 +93,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             'http://aaa.pleiades.stoa.org/places/658494',
         ];
         foreach ($bad as $i) {
-            $this->assertEquals('https://www.pleiades.stoa.org/places/658494', UriNormalizer::gNormalize($i));
+            $this->assertEquals('https://pleiades.stoa.org/places/658494', UriNormalizer::gNormalize($i));
         }
     }
 
@@ -196,5 +196,29 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $res->addResource(self::ID_PROP, 'http://aaa.geonames.org/276136/borj-ej-jaaiyat.html');
         UriNormalizer::gNormalizeMeta($res);
         $this->assertEquals('https://www.geonames.org/276136', $res->getResource(self::ID_PROP));
+    }
+
+    
+    public function testFactory(): void {
+        UriNormalizer::init(null, self::ID_PROP);
+        
+        $bad = [
+            'https://orcid.org/0000-0002-5274-8278',
+            'http://aaa.orcid.org/0000-0002-5274-8278',
+            'https://orcid.org/0000000252748278',
+            'https://orcid.org/0000-00025274-8278',
+        ];
+        foreach ($bad as $i) {
+            $this->assertEquals('https://orcid.org/0000-0002-5274-8278', UriNormalizer::gNormalize($i));
+        }
+    }
+    
+    /**
+     * @depends testInit
+     */
+    public function testError(): void {
+        UriNormalizer::init();
+        $this->expectErrorMessage('Id property not defined');
+        UriNormalizer::gNormalizeMeta((new Graph())->resource('.'));
     }
 }

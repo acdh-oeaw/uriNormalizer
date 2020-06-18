@@ -37,7 +37,23 @@ use EasyRdf\Resource;
 class UriNormalizer {
 
     static private $obj;
-    
+
+    /**
+     * Creates a UriNormalizer object using mappings provided by the 
+     * acdhOeaw\UriNormRules class.
+     * 
+     * @param string $idProp a default RDF property to be used by the 
+     *   `normalizeMeta()` method
+     * @return \acdhOeaw\UriNormalizer
+     */
+    static public function factory(string $idProp = '') {
+        $mappings = [];
+        foreach (UriNormRules::getRules() as $i) {
+            $mappings['`' . $i->match . '`'] = $i->replace;
+        }
+        return new UriNormalizer($mappings, $idProp);
+    }
+
     /**
      * Initializes a global singleton instance of the UriNormalizer.
      * 
@@ -46,8 +62,12 @@ class UriNormalizer {
      * @param string $idProp a default RDF property to be used by the 
      *   `normalizeMeta()` method
      */
-    static public function init(array $mappings = [], string $idProp = '') {
-        self::$obj = new UriNormalizer($mappings, $idProp);
+    static public function init(?array $mappings = null, string $idProp = '') {
+        if ($mappings === null) {
+            self::$obj = self::factory($idProp);
+        } else {
+            self::$obj = new UriNormalizer($mappings, $idProp);
+        }
     }
 
     /**
@@ -62,7 +82,7 @@ class UriNormalizer {
     static public function gNormalize(string $uri): string {
         return self::$obj->normalize($uri);
     }
-    
+
     /**
      * A static version of the normalizeMeta() method.
      * 
@@ -73,22 +93,22 @@ class UriNormalizer {
      *   the `UriNormalizer::init()` is used)
      * @see normalizeMeta()
      */
-    static public function gNormalizeMeta(Resource $res, string $idProp): void {
+    static public function gNormalizeMeta(Resource $res, string $idProp = ''): void {
         self::$obj->normalizeMeta($res, $idProp);
     }
-    
+
     /**
      *
      * @var array
      */
     private $mappings;
-    
+
     /**
      *
      * @var string
      */
     private $idProp;
-    
+
     /**
      * @param array $mappings array of value mappings. Normalization is made by
      *   running a `preg_replace($mappingKey, $mappingValue, $valueToMap)`
@@ -97,9 +117,9 @@ class UriNormalizer {
      */
     public function __construct(array $mappings = [], string $idProp = '') {
         $this->mappings = $mappings;
-        $this->idProp = $idProp;
+        $this->idProp   = $idProp;
     }
-    
+
     /**
      * Returns a normalized URIs.
      * 
@@ -112,7 +132,7 @@ class UriNormalizer {
     public function normalize(string $uri): string {
         foreach ($this->mappings as $match => $replace) {
             $count = 0;
-            $norm = preg_replace($match, $replace, $uri, 1, $count);
+            $norm  = preg_replace($match, $replace, $uri, 1, $count);
             if ($count) {
                 return $norm;
             }
@@ -135,7 +155,7 @@ class UriNormalizer {
         if (empty($idProp)) {
             throw new RuntimeException('Id property not defined');
         }
-        
+
         foreach ($res->allResources($idProp) as $id) {
             $res->deleteResource($idProp, $id);
             $res->addResource($idProp, $this->normalize((string) $id));
