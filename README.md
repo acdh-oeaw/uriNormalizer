@@ -1,6 +1,6 @@
 # URI Normalizer
 
-[![Latest Stable Version](https://poser.pugx.org/acdh-oeaw/uriNormalizer/v/stable)](https://packagist.org/packages/acdh-oeaw/uri-normalizer)
+[![Latest Stable Version](https://poser.pugx.org/acdh-oeaw/uri-normalizer/v/stable)](https://packagist.org/packages/acdh-oeaw/uri-normalizer)
 ![Build status](https://github.com/acdh-oeaw/uriNormalizer/workflows/phpunit/badge.svg?branch=master)
 [![Coverage Status](https://coveralls.io/repos/github/acdh-oeaw/uriNormalizer/badge.svg?branch=master)](https://coveralls.io/github/acdh-oeaw/uriNormalizer?branch=master)
 [![License](https://poser.pugx.org/acdh-oeaw/arche-core/license)](https://packagist.org/packages/acdh-oeaw/uri-normalizer)
