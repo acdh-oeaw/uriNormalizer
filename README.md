@@ -1,5 +1,10 @@
 # URI Normalizer
 
+[![Latest Stable Version](https://poser.pugx.org/acdh-oeaw/uriNormalizer/v/stable)](https://packagist.org/packages/acdh-oeaw/uri-normalizer)
+![Build status](https://github.com/acdh-oeaw/uriNormalizer/workflows/phpunit/badge.svg?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/acdh-oeaw/uriNormalizer/badge.svg?branch=master)](https://coveralls.io/github/acdh-oeaw/uriNormalizer?branch=master)
+[![License](https://poser.pugx.org/acdh-oeaw/arche-core/license)](https://packagist.org/packages/acdh-oeaw/uri-normalizer)
+
 A simple class for normalizing external entity reference sources' URIs (Geonames, GND, etc. URIs).
 
 Most entity reference sources properly resolves many variants of an entity URI, e.g. for the Geonames 
@@ -67,18 +72,7 @@ $n->normalizeMeta($res);
 // gives 'https://www.geonames.org/2761369'
 ```
 
-## Sample mappings
+## Mappings
 
-```php
-$mappings = [
-    '|^https?://([^.]*[.])?geonames[.]org/([0-9]+)(/.*)?$|'                             => 'https://www.geonames.org/\2',
-    '|^https?://([^.]*[.])?gazetteer[.]dainst[.]org/([A-Za-z]+/)*([0-9]+)([^0-9].*)?$|'  => 'https://gazetteer.dainst.org/place/\3',
-    '|^https?://([^.]*[.])?pleiades[.]stoa[.]org/places/([0-9]+)(/.*)?$|'                => 'https://pleiades.stoa.org/places/\2',
-    '|^https?://([^.]*[.])?viaf[.]org/viaf/([0-9]+)(/.*)?$|'                             => 'https://viaf.org/viaf/\2',
-    '|^https?://([^.]*[.])?d-nb[.]info/gnd/([0-9]+-[0-9]+)$|'                            => 'https://d-nb.info/gnd/\2',
-    '|^https?://([^.]*[.])?wikidata[.]org/([A-Za-z:]+/)*(Q[0-9]+)([^[0-9].*)?$|'         => 'https://www.wikidata.org/entity/\3',
-    '|^https?://([^.]*[.])?orcid[.]org/([0-9]{4})-?([0-9]{4})-?([0-9]{4})-?([0-9]{4})$|' => 'https://orcid.org/\2-\3-\4-\5',
-    '|^https?://([^.]*[.])?n2t[.]net/ark:/99152/(p0[a-z0-9]+)$|'                         => 'https://n2t.net/ark:/99152/\2',
-    '|^https?://([^.]*[.])?chronontology[.]dainst[.]org/period/([A-Za-z0-9]+)$|'         => 'https://chronontology.dainst.org/period/\2',
-];
-```
+If not specified, mappings provided by the [UriNormRules](https://github.com/acdh-oeaw/UriNormRules) are used.
+
