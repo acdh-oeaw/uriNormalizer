@@ -205,8 +205,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $bad = [
             'https://orcid.org/0000-0002-5274-8278',
             'http://aaa.orcid.org/0000-0002-5274-8278',
-            'https://orcid.org/0000000252748278',
-            'https://orcid.org/0000-00025274-8278',
+            'https://orcid.org/0000-0002-5274-8278/',
         ];
         foreach ($bad as $i) {
             $this->assertEquals('https://orcid.org/0000-0002-5274-8278', UriNormalizer::gNormalize($i));
