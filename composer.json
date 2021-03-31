@@ -13,7 +13,7 @@
     "require": {
         "php": ">= 7.1",
         "acdh-oeaw/easyrdf": "*",
-        "acdh-oeaw/uri-norm-rules": "*"
+        "acdh-oeaw/arche-assets": "*"
     },
     "autoload": {
         "psr-4": {
