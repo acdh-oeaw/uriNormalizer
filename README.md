@@ -7,7 +7,7 @@
 
 A simple class for normalizing external entity reference sources' URIs (Geonames, GND, etc. URIs).
 
-Most entity reference sources properly resolves many variants of an entity URI, e.g. for the Geonames 
+Most entity-reference-sources properly resolve many variants of an entity URI, e.g. for the Geonames 
 all URLs below represent exactly the same entity (and it's definitely not a full list):
 
 * http://geonames.org/2761369
@@ -74,5 +74,5 @@ $n->normalizeMeta($res);
 
 ## Mappings
 
-If not specified, mappings provided by the [UriNormRules](https://github.com/acdh-oeaw/UriNormRules) are used.
+If not specified, mappings provided by the [arche-assets](https://github.com/acdh-oeaw/arche-assets) are used.
 
