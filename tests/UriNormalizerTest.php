@@ -27,6 +27,9 @@
 namespace acdhOeaw;
 
 use EasyRdf\Graph;
+use EasyRdf\Resource;
+use GuzzleHttp\Psr7\Response;
+use acdhOeaw\UriNormalizerException;
 
 /**
  * Description of IndexerTest
@@ -36,40 +39,35 @@ use EasyRdf\Graph;
 class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
 
     const ID_PROP = 'https://id/prop';
-    
+
     public function testInit(): void {
-        $mappings = [
-            '|^https?://([^.]*[.])?geonames[.]org/([0-9]+)(/.*)?$|'                              => 'https://www.geonames.org/\2',
-            '|^https?://([^.]*[.])?gazetteer[.]dainst[.]org/([A-Za-z]+/)*([0-9]+)([^0-9].*)?$|'  => 'https://gazetteer.dainst.org/place/\3',
-            '|^https?://([^.]*[.])?pleiades[.]stoa[.]org/places/([0-9]+)(/.*)?$|'                => 'https://pleiades.stoa.org/places/\2',
-            '|^https?://([^.]*[.])?viaf[.]org/viaf/([0-9]+)(/.*)?$|'                             => 'https://viaf.org/viaf/\2',
-            '|^https?://([^.]*[.])?d-nb[.]info/gnd/([0-9]+-[0-9]+)$|'                            => 'https://d-nb.info/gnd/\2',
-            '|^https?://([^.]*[.])?wikidata[.]org/([A-Za-z:]+/)*(Q[0-9]+)([^[0-9].*)?$|'         => 'https://www.wikidata.org/entity/\3',
-            '|^https?://([^.]*[.])?orcid[.]org/([0-9]{4})-?([0-9]{4})-?([0-9]{4})-?([0-9]{4})$|' => 'https://orcid.org/\2-\3-\4-\5',
-            '|^https?://([^.]*[.])?n2t[.]net/ark:/99152/(p0[a-z0-9]+)$|'                         => 'https://n2t.net/ark:/99152/\2',
-            '|^https?://([^.]*[.])?chronontology[.]dainst[.]org/period/([A-Za-z0-9]+)$|'         => 'https://chronontology.dainst.org/period/\2',
-        ];
+        $mappings = UriNormRules::getRules();
         UriNormalizer::init($mappings, self::ID_PROP);
-        $this->assertNotEmpty(UriNormalizer::gNormalize('https://sample.uri'));
+        $url      = 'https://sample.uri';
+        $this->assertEquals($url, UriNormalizer::gNormalize('https://sample.uri', false));
     }
 
     /**
      * @depends testInit
      */
     public function testGeonames(): void {
-        $bad = [
+        $valid = 'https://sws.geonames.org/276136/';
+        $bad   = [
             'http://aaa.geonames.org/276136/borj-ej-jaaiyat.html',
         ];
         foreach ($bad as $i) {
-            $this->assertEquals('https://www.geonames.org/276136', UriNormalizer::gNormalize($i));
+            $this->assertEquals($valid, UriNormalizer::gNormalize($i));
         }
+        $this->assertInstanceOf(Response::class, UriNormalizer::gResolve($valid));
+        $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch($valid));
     }
 
     /**
      * @depends testInit
      */
     public function testGazetteer(): void {
-        $bad = [
+        $valid = 'https://gazetteer.dainst.org/place/2282705';
+        $bad   = [
             'https://gazetteer.dainst.org/place/2282705',
             'https://gazetteer.dainst.org/doc/2282705.rdf',
             'https://gazetteer.dainst.org/doc/shapefile/2282705',
@@ -77,15 +75,18 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             'http://aaa.gazetteer.dainst.org/doc/2282705',
         ];
         foreach ($bad as $i) {
-            $this->assertEquals('https://gazetteer.dainst.org/place/2282705', UriNormalizer::gNormalize($i));
+            $this->assertEquals($valid, UriNormalizer::gNormalize($i));
         }
+        $this->assertInstanceOf(Response::class, UriNormalizer::gResolve($valid));
+        $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch($valid));
     }
 
     /**
      * @depends testInit
      */
     public function testPleiades(): void {
-        $bad = [
+        $valid = 'https://pleiades.stoa.org/places/658494';
+        $bad   = [
             'https://pleiades.stoa.org/places/658494',
             'http://pleiades.stoa.org/places/658494',
             'http://pleiades.stoa.org/places/658494/carthage',
@@ -93,15 +94,18 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             'http://aaa.pleiades.stoa.org/places/658494',
         ];
         foreach ($bad as $i) {
-            $this->assertEquals('https://pleiades.stoa.org/places/658494', UriNormalizer::gNormalize($i));
+            $this->assertEquals($valid, UriNormalizer::gNormalize($i));
         }
+        $this->assertInstanceOf(Response::class, UriNormalizer::gResolve($valid));
+        $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch($valid));
     }
 
     /**
      * @depends testInit
      */
     public function testViaf(): void {
-        $bad = [
+        $valid = 'http://viaf.org/viaf/8110691';
+        $bad   = [
             'http://viaf.org/viaf/8110691',
             'https://viaf.org/viaf/8110691',
             'http://viaf.org/viaf/8110691/rdf.xml',
@@ -109,29 +113,38 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             'http://aaa.viaf.org/viaf/8110691',
         ];
         foreach ($bad as $i) {
-            $this->assertEquals('https://viaf.org/viaf/8110691', UriNormalizer::gNormalize($i));
+            $this->assertEquals($valid, UriNormalizer::gNormalize($i));
         }
+        $this->assertInstanceOf(Response::class, UriNormalizer::gResolve($valid));
+        $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch($valid));
     }
 
     /**
      * @depends testInit
      */
     public function testGnd(): void {
-        $bad = [
+        $valid = 'https://d-nb.info/gnd/4491366-7';
+        $bad   = [
             'http://d-nb.info/gnd/4491366-7',
             'https://d-nb.info/gnd/4491366-7',
             'http://aaa.d-nb.info/gnd/4491366-7',
         ];
         foreach ($bad as $i) {
-            $this->assertEquals('https://d-nb.info/gnd/4491366-7', UriNormalizer::gNormalize($i));
+            $this->assertEquals($valid, UriNormalizer::gNormalize($i));
         }
+        $this->assertInstanceOf(Response::class, UriNormalizer::gResolve($valid));
+        $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch($valid));
+
+        // with within-gnd redirect to https://d-nb.info/gnd/118560077/about/lds.rdf
+        $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch('https://d-nb.info/gnd/1089894554'));
     }
 
     /**
      * @depends testInit
      */
     public function testWikidata(): void {
-        $bad = [
+        $valid = 'http://www.wikidata.org/entity/Q42';
+        $bad   = [
             'https://www.wikidata.org/wiki/Q42',
             'http://www.wikidata.org/entity/Q42',
             'http://www.wikidata.org/wiki/Special:EntityData/Q42',
@@ -140,50 +153,90 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             'http://aaa.wikidata.org/wiki/Q42',
         ];
         foreach ($bad as $i) {
-            $this->assertEquals('https://www.wikidata.org/entity/Q42', UriNormalizer::gNormalize($i));
+            $this->assertEquals($valid, UriNormalizer::gNormalize($i));
         }
+        $this->assertInstanceOf(Response::class, UriNormalizer::gResolve($valid));
+        $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch($valid));
     }
 
     /**
      * @depends testInit
      */
     public function testOrcid(): void {
-        $bad = [
+        $valid = 'https://orcid.org/0000-0002-5274-8278';
+        $bad   = [
             'https://orcid.org/0000-0002-5274-8278',
             'http://aaa.orcid.org/0000-0002-5274-8278',
             'https://orcid.org/0000000252748278',
             'https://orcid.org/0000-00025274-8278',
         ];
         foreach ($bad as $i) {
-            $this->assertEquals('https://orcid.org/0000-0002-5274-8278', UriNormalizer::gNormalize($i));
+            $this->assertEquals($valid, UriNormalizer::gNormalize($i));
         }
+        $this->assertInstanceOf(Response::class, UriNormalizer::gResolve($valid));
+        $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch($valid));
+    }
+
+    /**
+     * @depends testInit
+     */
+    public function testIsni(): void {
+        $valid = 'https://isni.org/isni/0000000128722353';
+        $bad   = [
+            'https://isni.org/isni/0000-0001-2872-2353',
+            'http://isni.org/isni/0000000128722353/about.rdf',
+            'https://isni.org/isni/0000000128722353',
+        ];
+        foreach ($bad as $i) {
+            $this->assertEquals($valid, UriNormalizer::gNormalize($i));
+        }
+        $this->assertInstanceOf(Response::class, UriNormalizer::gResolve($valid));
+        $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch($valid));
     }
 
     /**
      * @depends testInit
      */
     public function testPeriodo(): void {
-        $bad = [
+        $valid = 'http://n2t.net/ark:/99152/p0m63njncbv';
+        $bad   = [
             'http://n2t.net/ark:/99152/p0m63njncbv',
             'https://n2t.net/ark:/99152/p0m63njncbv',
             'http://aaa.n2t.net/ark:/99152/p0m63njncbv',
+            'http://foo.perio.do/p0m63njncbv.ttl',
+            'https://perio.do/p0m63njncbv',
         ];
         foreach ($bad as $i) {
-            $this->assertEquals('https://n2t.net/ark:/99152/p0m63njncbv', UriNormalizer::gNormalize($i));
+            $this->assertEquals($valid, UriNormalizer::gNormalize($i), $i);
         }
+        $this->assertInstanceOf(Response::class, UriNormalizer::gResolve($valid));
+        $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch($valid));
     }
 
     /**
      * @depends testInit
      */
     public function testChronontology(): void {
-        $bad = [
+        $valid = 'https://chronontology.dainst.org/period/rYh7ggsMyaSj';
+        $bad   = [
             'http://chronontology.dainst.org/period/rYh7ggsMyaSj',
             'https://chronontology.dainst.org/period/rYh7ggsMyaSj',
             'http://aaa.chronontology.dainst.org/period/rYh7ggsMyaSj',
         ];
         foreach ($bad as $i) {
-            $this->assertEquals('https://chronontology.dainst.org/period/rYh7ggsMyaSj', UriNormalizer::gNormalize($i));
+            $this->assertEquals($valid, UriNormalizer::gNormalize($i));
+        }
+        try {
+            $this->assertInstanceOf(Response::class, UriNormalizer::gResolve($valid));
+            $this->assertTrue(false);
+        } catch (UriNormalizerException $e) {
+            $this->assertEquals("$valid doesn't match any rule", $e->getMessage());
+        }
+        try {
+            $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch($valid));
+            $this->assertTrue(false);
+        } catch (UriNormalizerException $e) {
+            $this->assertEquals("$valid doesn't match any rule", $e->getMessage());
         }
     }
 
@@ -192,16 +245,15 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
      */
     public function testResource(): void {
         $graph = new Graph();
-        $res = $graph->resource('.');
+        $res   = $graph->resource('.');
         $res->addResource(self::ID_PROP, 'http://aaa.geonames.org/276136/borj-ej-jaaiyat.html');
         UriNormalizer::gNormalizeMeta($res);
-        $this->assertEquals('https://www.geonames.org/276136', $res->getResource(self::ID_PROP));
+        $this->assertEquals('https://sws.geonames.org/276136/', $res->getResource(self::ID_PROP));
     }
 
-    
     public function testFactory(): void {
         UriNormalizer::init(null, self::ID_PROP);
-        
+
         $bad = [
             'https://orcid.org/0000-0002-5274-8278',
             'http://aaa.orcid.org/0000-0002-5274-8278',
@@ -211,7 +263,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             $this->assertEquals('https://orcid.org/0000-0002-5274-8278', UriNormalizer::gNormalize($i));
         }
     }
-    
+
     /**
      * @depends testInit
      */
