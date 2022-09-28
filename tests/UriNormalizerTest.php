@@ -272,4 +272,27 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $this->expectErrorMessage('Id property not defined');
         UriNormalizer::gNormalizeMeta((new Graph())->resource('.'));
     }
+
+    /**
+     * @depends testInit
+     */
+    public function testNoMatch(): void {
+        UriNormalizer::init();
+        $uri = 'http://foo/bar';
+        $this->expectErrorMessage("$uri doesn't match any rule");
+        UriNormalizer::gNormalize($uri);
+    }
+
+    /**
+     * @depends testInit
+     */
+    public function testWrongResolveRule(): void {
+        $rules = [
+            ['match' => '.*', 'replace' => '', 'resolve' => 'http://foo/bar', 'format' => 'baz']
+        ];
+        $uri = 'http://bar/foo';
+        UriNormalizer::init($rules);
+        $this->expectErrorMessageMatches("`^Failed to fetch RDF data from http://foo/bar with `");
+        UriNormalizer::gResolve($uri);
+    }
 }
