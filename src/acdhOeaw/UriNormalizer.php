@@ -87,10 +87,13 @@ class UriNormalizer {
      * @param Resource $res metadata to be processed
      * @param string $idProp id property URI (if not provided, value passed to 
      *   the `UriNormalizer::init()` is used)
+     * @param bool $requireMatch should an exception be rised if the $uri 
+     *   matches no rule
      * @see normalizeMeta()
      */
-    static public function gNormalizeMeta(Resource $res, string $idProp = ''): void {
-        self::$obj->normalizeMeta($res, $idProp);
+    static public function gNormalizeMeta(Resource $res, string $idProp = '',
+                                          bool $requireMatch = true): void {
+        self::$obj->normalizeMeta($res, $idProp, $requireMatch);
     }
 
     /**
@@ -187,9 +190,12 @@ class UriNormalizer {
      * @param Resource $res metadata to be processed
      * @param string $idProp id property URI (if not provided, value passed to 
      *   the object constructor is used)
+     * @param bool $requireMatch should an exception be rised if the $uri 
+     *   matches no rule
      * @throws UriNormalizerException
      */
-    public function normalizeMeta(Resource $res, string $idProp = ''): void {
+    public function normalizeMeta(Resource $res, string $idProp = '',
+                                  bool $requireMatch = true): void {
         $idProp = empty($idProp) ? $this->idProp : $idProp;
         if (empty($idProp)) {
             throw new UriNormalizerException('Id property not defined');
@@ -197,7 +203,7 @@ class UriNormalizer {
 
         foreach ($res->allResources($idProp) as $id) {
             $res->deleteResource($idProp, $id);
-            $res->addResource($idProp, $this->normalize((string) $id));
+            $res->addResource($idProp, $this->normalize((string) $id, $requireMatch));
         }
     }
 
