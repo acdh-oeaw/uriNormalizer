@@ -243,6 +243,30 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
     /**
      * @depends testInit
      */
+    public function testArche(): void {
+        $toTest = [
+            'https://arche.acdh.oeaw.ac.at/api/1234'                       => 'https://arche.acdh.oeaw.ac.at/api/1234',
+            'https://arche.acdh.oeaw.ac.at/api/1234/metadata'              => 'https://arche.acdh.oeaw.ac.at/api/1234',
+            'https://arche-curation.acdh-dev.oeaw.ac.at/api/1234'          => 'https://arche-curation.acdh-dev.oeaw.ac.at/api/1234',
+            'https://arche-curation.acdh-dev.oeaw.ac.at/api/1234/metadata' => 'https://arche-curation.acdh-dev.oeaw.ac.at/api/1234',
+            'https://arche-dev.acdh-dev.oeaw.ac.at/api/1234'               => 'https://arche-dev.acdh-dev.oeaw.ac.at/api/1234',
+            'https://arche-dev.acdh-dev.oeaw.ac.at/api/1234/metadata'      => 'https://arche-dev.acdh-dev.oeaw.ac.at/api/1234',
+            'https://id.acdh.oeaw.ac.at/foo'                               => 'https://id.acdh.oeaw.ac.at/foo',
+            'http://127.0.0.1/1234'                                        => 'http://127.0.0.1/1234',
+            'http://127.0.0.1/1234/metadata'                               => 'http://127.0.0.1/1234',
+            'http://127.0.0.1/api/1234'                                    => 'http://127.0.0.1/api/1234',
+            'http://127.0.0.1/api/1234/metadata'                           => 'http://127.0.0.1/api/1234',
+            'http://localhost/1234'                                        => 'http://localhost/1234',
+            'http://localhost/api/1234/metadata'                           => 'http://localhost/api/1234',
+        ];
+        foreach ($toTest as $uri => $expected) {
+            $this->assertEquals($expected, UriNormalizer::gNormalize($uri));
+        }
+    }
+
+    /**
+     * @depends testInit
+     */
     public function testResource(): void {
         $graph = new Graph();
         $res   = $graph->resource('.');
@@ -290,7 +314,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $rules = [
             ['match' => '.*', 'replace' => '', 'resolve' => 'http://foo/bar', 'format' => 'baz']
         ];
-        $uri = 'http://bar/foo';
+        $uri   = 'http://bar/foo';
         UriNormalizer::init($rules);
         $this->expectErrorMessageMatches("`^Failed to fetch RDF data from http://foo/bar with `");
         UriNormalizer::gResolve($uri);
