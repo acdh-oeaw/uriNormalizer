@@ -230,8 +230,7 @@ class UriNormalizer {
      *   While technically any sane RDF retrieval service will set HTTP response
      *   cache control headers to "no cache" it might may sense from the client
      *   perspective to assume that over the life time of the UriNormalizer
-     *   object the retrieved results shouldn't change and can be cached. Be 
-     *   aware that the cached Response objects don't preserve body.
+     *   object the retrieved results shouldn't change and can be cached. 
      * @return ResponseInterface
      * @throws UriNormalizerException
      */

@@ -339,8 +339,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
 
         $this->assertNotSame($r1, $r2);
         $this->assertEquals((string) $r1->getBody(), (string) $r2->getBody());
-        // first cached response contains body while cached entries don't
-        $this->assertNotSame($r2, $r3);
+        $this->assertSame($r2, $r3);
         $this->assertSame($r3, $r4);
 
         $t4 = $t4 - $t3;
