@@ -13,7 +13,7 @@
     "require": {
         "php": ">= 8.0",
         "acdh-oeaw/easyrdf": "*",
-        "acdh-oeaw/arche-assets": "^3.4",
+        "acdh-oeaw/arche-assets": "^3.5",
         "guzzlehttp/guzzle": "^7.5"
     },
     "autoload": {

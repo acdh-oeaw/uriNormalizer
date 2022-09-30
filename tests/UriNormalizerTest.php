@@ -203,8 +203,8 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             'http://n2t.net/ark:/99152/p0m63njncbv',
             'https://n2t.net/ark:/99152/p0m63njncbv',
             'http://aaa.n2t.net/ark:/99152/p0m63njncbv',
-            'http://foo.perio.do/p0m63njncbv.ttl',
-            'https://perio.do/p0m63njncbv',
+            'http://foo.perio.do/m63njncbv.ttl',
+            'https://perio.do/m63njncbv',
         ];
         foreach ($bad as $i) {
             $this->assertEquals($valid, UriNormalizer::gNormalize($i), $i);
