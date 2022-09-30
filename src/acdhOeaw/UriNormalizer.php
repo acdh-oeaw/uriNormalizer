@@ -103,10 +103,10 @@ class UriNormalizer {
      * Call `UriNormalizer::init()` before first use.
      * 
      * @param string $uri
-     * @return Response
+     * @return ResponseInterface
      * @see resolve()
      */
-    static public function gResolve(string $uri): Response {
+    static public function gResolve(string $uri): ResponseInterface {
         return self::$obj->resolve($uri);
     }
 
@@ -133,7 +133,7 @@ class UriNormalizer {
 
     /**
      * 
-     * @var array<string, Response>
+     * @var array<string, ResponseInterface>
      */
     private array $cacheResolve = [];
 
@@ -221,6 +221,10 @@ class UriNormalizer {
      * 
      * Throws the UriNormalizerException if the resolving fails.
      * 
+     * The final URL (which may differ from the supplied $uri parameter because
+     * of normalization and redirects) is provided in the Location header of the
+     * returned Response object.
+     * 
      * @param string $uri
      * @param bool $cache should results be cached and cache used when available?
      *   While technically any sane RDF retrieval service will set HTTP response
@@ -228,10 +232,10 @@ class UriNormalizer {
      *   perspective to assume that over the life time of the UriNormalizer
      *   object the retrieved results shouldn't change and can be cached. Be 
      *   aware that the cached Response objects don't preserve body.
-     * @return Response
+     * @return ResponseInterface
      * @throws UriNormalizerException
      */
-    public function resolve(string $uri, bool $cache = false): Response {
+    public function resolve(string $uri, bool $cache = false): ResponseInterface {
         if ($cache && isset($this->cacheResolve[$uri])) {
             return $this->cacheResolve[$uri];
         }
@@ -243,11 +247,11 @@ class UriNormalizer {
             }
 
             $response = $this->fetchUrl($url, 'GET', $rule);
+            $response = $response->withHeader('Location', (string) $url);
 
             if ($cache) {
-                $cacheResponse                     = $response->withBody(Utils::streamFor(''));
-                $this->cacheResolve[$uri]          = $cacheResponse;
-                $this->cacheResolve[(string) $url] = $cacheResponse;
+                $this->cacheResolve[$uri]          = $response;
+                $this->cacheResolve[(string) $url] = $response;
             }
 
             return $response;
