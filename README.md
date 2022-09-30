@@ -5,10 +5,15 @@
 [![Coverage Status](https://coveralls.io/repos/github/acdh-oeaw/uriNormalizer/badge.svg?branch=master)](https://coveralls.io/github/acdh-oeaw/uriNormalizer?branch=master)
 [![License](https://poser.pugx.org/acdh-oeaw/uri-normalizer/license)](https://packagist.org/packages/acdh-oeaw/uri-normalizer)
 
-A simple class for normalizing external entity reference sources' URIs (Geonames, GND, etc. URIs).
+A class for **normalizing named entity URIs** from services like Geonames, GND, VIAF, ORCID, etc. and **retrieving RDF metadata** from them.
 
-Most entity-reference-sources properly resolve many variants of an entity URI, e.g. for the Geonames 
-all URLs below represent exactly the same entity (and it's definitely not a full list):
+By default the rules from the [arche-assets](https://github.com/acdh-oeaw/arche-assets) library are used by you can supply your own ones.
+
+## Context
+
+While looking at the named entity database services it's quite often difficult to tell which URL is a canonical URI for a given named entity.
+
+Just let's take a quick look at a bunch (there are definitely more) of Geonames URLs describing exactly same Geonames named entity with id 2761369:
 
 * http://geonames.org/2761369
 * https://geonames.org/2761369
@@ -21,15 +26,14 @@ all URLs below represent exactly the same entity (and it's definitely not a full
 * https://www.geonames.org/2761369/vienna/about.rdf
 * https://www.geonames.org/2761369/vienna.html
 
-Because of that entity URIs can't be simply tested for equality without normalization.
+Which one of them is **the right one**? The actual answer is quite simple - **the one used as an RDF triples subject in the RDF metadata returned by a given service.**
+So the first aim of this package is to provide a tool for transforming any URL coming from a given service and transform it into the canonical URI used by the service in the RDF metadata it returns.
 
-Similarly a normalization is needed for LOD metadata retrieval based on an URI, e.g. not all of above-listed URIs allow to retrieve RDF metadata of an entity and even when they do, we need to assure we need to use the write URI as a triples subject in the retrieved RDF metadata.
+But here we come to another issue - how to fetch the RDF metadata for a given named entity knowing its URI?
 
-This package provides a simple framework for dealing with these issues.
-It allows to define URI namespaces with each namespace having a separate rule for
-
-* URI to RDF metadata subject normalization
-* URI to RDF metadata retrieval URL normalization
+For some services (like ORCID or VIAF) it can be done just with an [HTTP content negotation](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept) by requesting response in one of supported RDF formats. For other though you need to know a service-specific content negotation method, e.g. in Geonames you need to append `/about.rdf` to the canonical URI.
+The second aim of this package is to allow you to retrieve RDF metadata from named entity URIs/URLs without being bothered by all those service-specific peculiarities.
+And as such a retrieval involves quite some time, a caching option is also provided.
 
 ## Installation
 
@@ -39,73 +43,100 @@ composer require acdh-oeaw/uri-normalizer
 
 ## Usage
 
-### As a global singleton
-
 ```php
-$mappings = [
+###
+# Initialization
+###
+$normalizer = new \acdhOeaw\UriNormalizer();
+
+###
+# string URL normalization
+###
+// returns 'https://sws.geonames.org/2761369/'
+echo $normalizer->normalize('http://geonames.org/2761369/vienna.html');
+
+###
+# EasyRdf resource property normalization
+###
+$property = 'https://some.id/property';
+$graph    = new EasyRdf\Graph();
+$resource = $graph->resource('.');
+$resource->addResource($property, 'http://aaa.geonames.org/276136/borj-ej-jaaiyat.html');
+$normalizer->normalizeMeta($resource, $property);
+// returns 'https://sws.geonames.org/276136/'
+echo (string) $resource->getResource($property);
+
+###
+# Retrieve parsed RDF metadata from URI/URL using cache
+###
+// print parsed RDF metadata retrieved from the geonames
+// will take from a few milliseconds to few seconds depending on your network speed
+$t = microtime(true);
+$metadata = $normalizer->fetch('http://geonames.org/2761369/vienna.html', true);
+$t = (microtime(true) - $t);
+echo $metadata->dump('text') . "\ntime: $t s\n";
+// do it again - this time it will be almost immidiate thanks to the caching
+$t = microtime(true);
+$metadata = $normalizer->fetch('http://geonames.org/2761369/vienna.html', true);
+$t = (microtime(true) - $t);
+echo $metadata->dump('text') . "\ntime: $t s\n";
+
+###
+# Retrieve raw RDF metadata from URI/URL using cache 
+###
+// print raw RDF metadata retrieved from the geonames
+// will take from a few milliseconds to few seconds depending on your network speed
+$t = microtime(true);
+$response = $normalizer->resolve('http://geonames.org/2761369/vienna.html', true);
+$t = (microtime(true) - $t);
+echo $response->getBody() . "\ntime: $t s\n";
+// do it again - this time it will be much faster thanks to the caching
+$t = microtime(true);
+$response = $normalizer->resolve('http://geonames.org/2761369/vienna.html', true);
+$t = (microtime(true) - $t);
+echo $response->getBody() . "\ntime: $t s\n";
+
+###
+# Use your own normalization rules
+# and supply a custom Guzzle HTTP client (can be any PSR-18 one) supplying authentication
+###
+
+$rules = [
   [
-    "match"   => "^https?://(?:[^.]*[.])?geonames[.]org/([0-9]+)(/.*)?$",
-    "replace" => "https://sws.geonames.org/\\1/",
-    "resolve" => "https://sws.geonames.org/\\1/about.rdf",
-    "format"  => "application/rdf+xml",
+    "match"   => "^https://(?:my.)own.namespace/([0-9]+)(?:/.*)?$",
+    "replace" => "https://own.namespace/\\1",
+    "resolve" => "https://own.namespace/\\1",
+    "format"  => "application/n-triples",
   ],
 ];
-$idProp = 'https://some.id/property';
+$client = new \GuzzleHttp\Client(['auth' => ['login', 'password']]);
+$normalizer = new \acdhOeaw\UriNormalizer($rules, '', $client);
+// returns 'https://own.namespace/123'
+echo $normalizer->normalize('https://my.own.namespace/123/foo');
+// obviously won't work but if the https://own.namespace would exist,
+// it would be queried with the HTTP BASIC auth as set up above
+$normalizer->fetch('https://my.own.namespace/123/foo');
 
-// URI as a string
-\acdhOeaw\UriNormalizer::init($mappings, $idProp);
+###
+# As a global singleton
+###
+// supports same parameters as the constructor
+// so own rules and/or HTTP client can be passed in a same way 
+// like in the previous example
+\acdhOeaw\UriNormalizer::init();
+// returns 'https://sws.geonames.org/2761369/'
 echo \acdhOeaw\UriNormalizer::gNormalize('http://geonames.org/2761369/vienna.html');
-// gives 'https://sws.geonames.org/2761369/'
-
-// with an EasyRdf resource
-$graph = new EasyRdf\Graph();
-$res = $graph->resource('.');
-$res->addResource($idProp, 'http://aaa.geonames.org/276136/borj-ej-jaaiyat.html');
-UriNormalizer::gNormalizeMeta($res);
-(string) $res->getResource($idProp);
-// gives 'https://sws.geonames.org/2761369/'
-
-// Metadata retrieval
-// print raw RDF metadata retrieved from the geonames
-echo \acdhOeaw\UriNormalizer::gResolve('http://geonames.org/2761369/vienna.html')->getBody();
-// print parsed RDF metadata retrieved from the geonames
-echo \acdhOeaw\UriNormalizer::gFetch('http://geonames.org/2761369/vienna.html')->dump('text');
+// fetch and cache parsed RDF metadata
+echo \acdhOeaw\UriNormalizer::gFetch('http://geonames.org/2761369/vienna.html', true)->dump('text');
+// fetch and cache raw RDF metadata
+echo \acdhOeaw\UriNormalizer::gResolve('http://geonames.org/2761369/vienna.html', true)->getBody();
+// normalize EasyRdf Resource property
+$property = 'https://some.id/property';
+$graph    = new EasyRdf\Graph();
+$resource = $graph->resource('.');
+$resource->addResource($property, 'http://aaa.geonames.org/276136/borj-ej-jaaiyat.html');
+\acdhOeaw\UriNormalizer::gNormalizeMeta($resource, $property);
+// returns 'https://sws.geonames.org/276136/'
+echo (string) $resource->getResource($property);
 
 ```
-
-### As an object instance
-
-```php
-$mappings = [
-  [
-    "match"   => "^https?://(?:[^.]*[.])?geonames[.]org/([0-9]+)(/.*)?$",
-    "replace" => "https://sws.geonames.org/\\1/",
-    "resolve" => "https://sws.geonames.org/\\1/about.rdf",
-    "format"  => "application/rdf+xml",
-  ],
-];
-$n = new \acdhOeaw\UriNormalizer($mappings);
-
-echo $n->normalize('http://geonames.org/2761369/vienna.html');
-// gives 'https://www.geonames.org/2761369'
-
-// with an EasyRdf resource
-$graph = new EasyRdf\Graph();
-$res = $graph->resource('.');
-$res->addResource($idProp, 'http://aaa.geonames.org/276136/borj-ej-jaaiyat.html');
-$n->normalizeMeta($res);
-(string) $res->getResource($idProp);
-// gives 'https://sws.geonames.org/2761369/'
-
-// Metadata retrieval
-// print raw RDF metadata retrieved from the geonames
-echo $n->resolve('http://geonames.org/2761369/vienna.html')->getBody();
-// print parsed RDF metadata retrieved from the geonames
-echo $n->fetch('http://geonames.org/2761369/vienna.html')->dump('text');
-
-```
-
-## Mappings
-
-If not specified, mappings provided by the [arche-assets](https://github.com/acdh-oeaw/arche-assets) are used.
-
