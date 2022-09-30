@@ -295,7 +295,8 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $this->assertEquals($target, $v1);
         $this->assertEquals($target, $v2);
         $this->assertGreaterThan(0.00001, $t1);
-        $this->assertLessThan(0.00001, $t2);
+        $this->assertLessThan(0.0001, $t2);
+        $this->assertGreaterThan(10, $t1 / $t2);
     }
     public function testResolveCache(): void {
         $url = 'https://d-nb.info/gnd/4491366-7';
@@ -317,8 +318,8 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $t1 = $t1 - $t0;
         $this->assertLessThan($t1 / 100, $t2);
         $this->assertLessThan($t1 / 100, $t3);
-        $this->assertLessThan(0.00001, $t2);
-        $this->assertLessThan(0.00001, $t3);
+        $this->assertLessThan(0.0001, $t2);
+        $this->assertLessThan(0.0001, $t3);
     }
 
     public function testFetchCache(): void {
@@ -341,7 +342,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $t1 = $t1 - $t0;
         $this->assertLessThan($t1 / 100, $t2);
         $this->assertLessThan($t1 / 100, $t3);
-        $this->assertLessThan(0.00001, $t2);
-        $this->assertLessThan(0.00001, $t3);
+        $this->assertLessThan(0.0001, $t2);
+        $this->assertLessThan(0.0001, $t3);
     }
 }
