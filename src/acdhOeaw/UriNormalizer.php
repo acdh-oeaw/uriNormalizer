@@ -36,6 +36,7 @@ use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\Uri;
 use GuzzleHttp\Psr7\UriResolver;
+use GuzzleHttp\Psr7\Utils;
 
 /**
  * A simply utility class normalizing the URIs
@@ -126,14 +127,21 @@ class UriNormalizer {
      *
      * @var array<UriNormalizerRule>
      */
-    private $mappings;
-
-    /**
-     *
-     * @var string
-     */
+    private array $mappings;
     private string $idProp;
     private ClientInterface $client;
+
+    /**
+     * 
+     * @var array<string, Response>
+     */
+    private array $cacheResolve = [];
+
+    /**
+     * 
+     * @var array<string, Resource>
+     */
+    private array $cacheFetch = [];
 
     /**
      * @param array<UriNormalizerRule|array<string, string>|\stdClass>|null $mappings  
@@ -214,17 +222,35 @@ class UriNormalizer {
      * Throws the UriNormalizerException if the resolving fails.
      * 
      * @param string $uri
+     * @param bool $cache should results be cached and cache used when available?
+     *   While technically any sane RDF retrieval service will set HTTP response
+     *   cache control headers to "no cache" it might may sense from the client
+     *   perspective to assume that over the life time of the UriNormalizer
+     *   object the retrieved results shouldn't change and can be cached. Be 
+     *   aware that the cached Response objects don't preserve body.
      * @return Response
      * @throws UriNormalizerException
      */
-    public function resolve(string $uri): Response {
+    public function resolve(string $uri, bool $cache = false): Response {
+        if ($cache && isset($this->cacheResolve[$uri])) {
+            return $this->cacheResolve[$uri];
+        }
         foreach ($this->mappings as $rule) {
             $count = 0;
             $url   = preg_replace("`" . $rule->match . "`", $rule->resolve, $uri, 1, $count);
             if ($count === 0 || empty($rule->resolve)) {
                 continue;
             }
-            return $this->fetchUrl($url, 'GET', $rule);
+
+            $response = $this->fetchUrl($url, 'GET', $rule);
+
+            if ($cache) {
+                $cacheResponse                     = $response->withBody(Utils::streamFor(''));
+                $this->cacheResolve[$uri]          = $cacheResponse;
+                $this->cacheResolve[(string) $url] = $cacheResponse;
+            }
+
+            return $response;
         }
         throw new UriNormalizerException("$uri doesn't match any rule");
     }
@@ -235,16 +261,27 @@ class UriNormalizer {
      * Throws UriNormalizerException when the retrieval fails.
      * 
      * @param string $uri
+     * @param bool $cache should results be cached and cache used when available?
+     *   While technically any sane RDF retrieval service will set HTTP response
+     *   cache control headers to "no cache" it might may sense from the client
+     *   perspective to assume that over the life time of the UriNormalizer
+     *   object the retrieved results shouldn't change and can be cached. 
+     *   Remember the cached EasyRdf Resource objects are returned by reference
+     *   and changing their state propagates to the cache!
      * @return Resource
      * @throws UriNormalizerException
      */
-    public function fetch(string $uri): Resource {
+    public function fetch(string $uri, bool $cache = false): Resource {
+        if ($cache && isset($this->cacheFetch[$uri])) {
+            return $this->cacheFetch[$uri];
+        }
         foreach ($this->mappings as $rule) {
             $count = 0;
             $url   = preg_replace("`" . $rule->match . "`", $rule->resolve, $uri, 1, $count);
             if ($count === 0 || empty($rule->resolve)) {
                 continue;
             }
+
             $response = $this->fetchUrl($url, 'GET', $rule);
             $graph    = new Graph();
             $graph->parse((string) $response->getBody(), $rule->format);
@@ -255,6 +292,12 @@ class UriNormalizer {
                     throw new UriNormalizerException("RDF data fetched for $uri resolved to $url don't contain matching subject");
                 }
             }
+
+            if ($cache) {
+                $this->cacheFetch[$uri]          = $meta;
+                $this->cacheFetch[(string) $url] = $meta;
+            }
+
             return $meta;
         }
         throw new UriNormalizerException("$uri doesn't match any rule");

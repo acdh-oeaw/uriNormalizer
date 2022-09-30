@@ -319,4 +319,67 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $this->expectErrorMessageMatches("`^Failed to fetch RDF data from http://foo/bar with `");
         UriNormalizer::gResolve($uri);
     }
+
+    /**
+     * @depends testInit
+     */
+    public function testResolveCache(): void {
+        $url = 'https://d-nb.info/gnd/4491366-7';
+        $n   = new UriNormalizer();
+
+        $t0 = microtime(true);
+        $r1 = $n->resolve($url);
+        $t1 = microtime(true);
+        $r2 = $n->resolve($url, true);
+        $t2 = microtime(true);
+        $r3 = $n->resolve($url, true);
+        $t3 = microtime(true);
+        $r4 = $n->resolve('https://d-nb.info/gnd/4491366-7/about/lds.ttl', true);
+        $t4 = microtime(true);
+
+        $this->assertNotSame($r1, $r2);
+        $this->assertEquals((string) $r1->getBody(), (string) $r2->getBody());
+        // first cached response contains body while cached entries don't
+        $this->assertNotSame($r2, $r3);
+        $this->assertSame($r3, $r4);
+
+        $t4 = $t4 - $t3;
+        $t3 = $t3 - $t2;
+        $t2 = $t2 - $t1;
+        $t1 = $t1 - $t0;
+        $this->assertLessThan($t1 * 1.2, $t2);
+        $this->assertLessThan($t2 / 100, $t3);
+        $this->assertLessThan($t2 / 100, $t4);
+    }
+
+    /**
+     * @depends testInit
+     */
+    public function testFetchCache(): void {
+        $url = 'https://d-nb.info/gnd/4491366-7';
+        $n   = new UriNormalizer();
+
+        $t0 = microtime(true);
+        $r1 = $n->fetch($url);
+        $t1 = microtime(true);
+        $r2 = $n->fetch($url, true);
+        $t2 = microtime(true);
+        $r3 = $n->fetch($url, true);
+        $t3 = microtime(true);
+        $r4 = $n->fetch('https://d-nb.info/gnd/4491366-7/about/lds.ttl', true);
+        $t4 = microtime(true);
+
+        $this->assertNotSame($r1, $r2);
+        $this->assertEquals($r1, $r2);
+        $this->assertSame($r2, $r3);
+        $this->assertSame($r3, $r4);
+
+        $t4 = $t4 - $t3;
+        $t3 = $t3 - $t2;
+        $t2 = $t2 - $t1;
+        $t1 = $t1 - $t0;
+        $this->assertLessThan($t1 * 1.2, $t2);
+        $this->assertLessThan($t2 / 100, $t3);
+        $this->assertLessThan($t2 / 100, $t4);
+    }
 }
