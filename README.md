@@ -71,38 +71,39 @@ $normalizer->normalizeMeta($resource, $property);
 echo (string) $resource->getResource($property);
 
 ###
-# Retrieve parsed RDF metadata from URI/URL using cache
+# Retrieve parsed RDF metadata from URI/URL
 ###
 // print parsed RDF metadata retrieved from the geonames
 // will take from a few milliseconds to few seconds depending on your network speed
 $t = microtime(true);
-$metadata = $normalizer->fetch('http://geonames.org/2761369/vienna.html', true);
+$metadata = $normalizer->fetch('http://geonames.org/2761369/vienna.html');
 $t = (microtime(true) - $t);
 echo $metadata->dump('text') . "\ntime: $t s\n";
 // do it again - this time it will be almost immidiate thanks to the caching
 $t = microtime(true);
-$metadata = $normalizer->fetch('http://geonames.org/2761369/vienna.html', true);
+$metadata = $normalizer->fetch('http://geonames.org/2761369/vienna.html');
 $t = (microtime(true) - $t);
 echo $metadata->dump('text') . "\ntime: $t s\n";
 
 ###
-# Retrieve raw RDF metadata from URI/URL using cache 
+# Retrieve raw RDF metadata from URI/URL 
 ###
 // print raw RDF metadata retrieved from the geonames
 // will take from a few milliseconds to few seconds depending on your network speed
 $t = microtime(true);
-$response = $normalizer->resolve('http://geonames.org/2761369/vienna.html', true);
+$response = $normalizer->resolve('http://geonames.org/2761369/vienna.html');
 $t = (microtime(true) - $t);
 echo $response->getBody() . "\ntime: $t s\n";
 // do it again - this time it will be much faster thanks to the caching
 $t = microtime(true);
-$response = $normalizer->resolve('http://geonames.org/2761369/vienna.html', true);
+$response = $normalizer->resolve('http://geonames.org/2761369/vienna.html');
 $t = (microtime(true) - $t);
 echo $response->getBody() . "\ntime: $t s\n";
 
 ###
 # Use your own normalization rules
 # and supply a custom Guzzle HTTP client (can be any PSR-18 one) supplying authentication
+# also turn off caching
 ###
 $rules = [
   [
@@ -113,7 +114,8 @@ $rules = [
   ],
 ];
 $client = new \GuzzleHttp\Client(['auth' => ['login', 'password']]);
-$normalizer = new \acdhOeaw\UriNormalizer($rules, '', $client);
+$cache  = false;
+$normalizer = new \acdhOeaw\UriNormalizer($rules, '', $client, $cache);
 // returns 'https://own.namespace/123'
 echo $normalizer->normalize('https://my.own.namespace/123/foo');
 // obviously won't work but if the https://own.namespace would exist,
@@ -123,16 +125,17 @@ $normalizer->fetch('https://my.own.namespace/123/foo');
 ###
 # As a global singleton
 ###
-// supports same parameters as the constructor
-// so own rules and/or HTTP client can be passed in a same way 
-// like in the previous example
+// initialization is done with init() instead of a constructor
+// the init() takes same parameters as the constructor
 \acdhOeaw\UriNormalizer::init();
+// all other methods (gNormalize(), gFetch() and gResolve()) also work in 
+// the same way and take same parameters as their non-static counterparts
 // returns 'https://sws.geonames.org/2761369/'
 echo \acdhOeaw\UriNormalizer::gNormalize('http://geonames.org/2761369/vienna.html');
 // fetch and cache parsed RDF metadata
-echo \acdhOeaw\UriNormalizer::gFetch('http://geonames.org/2761369/vienna.html', true)->dump('text');
+echo \acdhOeaw\UriNormalizer::gFetch('http://geonames.org/2761369/vienna.html')->dump('text');
 // fetch and cache raw RDF metadata
-echo \acdhOeaw\UriNormalizer::gResolve('http://geonames.org/2761369/vienna.html', true)->getBody();
+echo \acdhOeaw\UriNormalizer::gResolve('http://geonames.org/2761369/vienna.html')->getBody();
 // normalize EasyRdf Resource property
 $property = 'https://some.id/property';
 $graph    = new EasyRdf\Graph();

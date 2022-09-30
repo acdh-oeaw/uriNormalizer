@@ -60,10 +60,14 @@ class UriNormalizer {
      * @param ClientInterface|null $client a PSR-18 HTTP client to be used to 
      *   resolve URIs. If not provided, a new instance of a `\GuzzleHttp\Client` 
      *   is used.
+     * @param bool $cache should caching be used? (cache consumes memory but
+     *   provides speedup for calls supplying same URLs/URIs)
+     * @see UriNormalizer::__construct()
      */
     static public function init(?array $mappings = null, string $idProp = '',
-                                ?ClientInterface $client = null): void {
-        self::$obj = new UriNormalizer($mappings, $idProp, $client);
+                                ?ClientInterface $client = null,
+                                bool $cache = true): void {
+        self::$obj = new UriNormalizer($mappings, $idProp, $client, $cache);
     }
 
     /**
@@ -130,6 +134,7 @@ class UriNormalizer {
     private array $mappings;
     private string $idProp;
     private ClientInterface $client;
+    private bool $cache;
 
     /**
      * 
@@ -144,6 +149,12 @@ class UriNormalizer {
     private array $cacheFetch = [];
 
     /**
+     * 
+     * @var array<string, string>
+     */
+    private array $cacheNormalize = [];
+
+    /**
      * @param array<UriNormalizerRule|array<string, string>|\stdClass>|null $mappings  
      *   a set of normalization rules to be used. If they are not UriNormRule 
      *   objects, an attempt to cast them is made with the 
@@ -154,9 +165,13 @@ class UriNormalizer {
      * @param ClientInterface|null $client a PSR-18 HTTP client to be used to 
      *   resolve URIs. If not provided, a new instance of a `\GuzzleHttp\Client` 
      *   is used.
+     * @param bool $cache should caching be used? Cache consumes memory but
+     *   provides speedup for calls supplying same URLs/URIs. This can be
+     *   particularly important for resolve() and fetch() calls.
      */
     public function __construct(?array $mappings = null, string $idProp = '',
-                                ?ClientInterface $client = null) {
+                                ?ClientInterface $client = null,
+                                bool $cache = true) {
         if ($mappings === null) {
             $mappings = UriNormRules::getRules();
         }
@@ -164,6 +179,7 @@ class UriNormalizer {
         $this->mappings = array_map(fn($x) => UriNormalizerRule::factory($x), $mappings);
         $this->idProp   = $idProp;
         $this->client   = $client ?? new Client();
+        $this->cache    = $cache;
     }
 
     /**
@@ -176,11 +192,21 @@ class UriNormalizer {
      * @throws UriNormalizerException
      */
     public function normalize(string $uri, bool $requireMatch = true): string {
+        if ($this->cache && isset($this->cacheNormalize[$uri])) {
+            return $this->cacheNormalize[$uri];
+        }
         foreach ($this->mappings as $rule) {
             $count = 0;
             $norm  = preg_replace('`' . $rule->match . '`', $rule->replace, $uri, 1, $count);
-            if ($count) {
-                return $norm ?: throw new UriNormalizerException("Wrong normalization rule: match $rule->match replace $rule->replace");
+            if ($norm === null) {
+                throw new UriNormalizerException("Wrong normalization rule: match $rule->match replace $rule->replace");
+            }
+            if ($count > 0) {
+                if ($this->cache) {
+                    $this->cacheNormalize[$uri]  = $norm;
+                    $this->cacheNormalize[$norm] = $norm;
+                }
+                return $norm;
             }
         }
         if ($requireMatch) {
@@ -226,16 +252,11 @@ class UriNormalizer {
      * returned Response object.
      * 
      * @param string $uri
-     * @param bool $cache should results be cached and cache used when available?
-     *   While technically any sane RDF retrieval service will set HTTP response
-     *   cache control headers to "no cache" it might may sense from the client
-     *   perspective to assume that over the life time of the UriNormalizer
-     *   object the retrieved results shouldn't change and can be cached. 
      * @return ResponseInterface
      * @throws UriNormalizerException
      */
-    public function resolve(string $uri, bool $cache = false): ResponseInterface {
-        if ($cache && isset($this->cacheResolve[$uri])) {
+    public function resolve(string $uri): ResponseInterface {
+        if ($this->cache && isset($this->cacheResolve[$uri])) {
             return $this->cacheResolve[$uri];
         }
         foreach ($this->mappings as $rule) {
@@ -248,7 +269,7 @@ class UriNormalizer {
             $response = $this->fetchUrl($url, 'GET', $rule);
             $response = $response->withHeader('Location', (string) $url);
 
-            if ($cache) {
+            if ($this->cache) {
                 $this->cacheResolve[$uri]          = $response;
                 $this->cacheResolve[(string) $url] = $response;
             }
@@ -264,18 +285,11 @@ class UriNormalizer {
      * Throws UriNormalizerException when the retrieval fails.
      * 
      * @param string $uri
-     * @param bool $cache should results be cached and cache used when available?
-     *   While technically any sane RDF retrieval service will set HTTP response
-     *   cache control headers to "no cache" it might may sense from the client
-     *   perspective to assume that over the life time of the UriNormalizer
-     *   object the retrieved results shouldn't change and can be cached. 
-     *   Remember the cached EasyRdf Resource objects are returned by reference
-     *   and changing their state propagates to the cache!
      * @return Resource
      * @throws UriNormalizerException
      */
-    public function fetch(string $uri, bool $cache = false): Resource {
-        if ($cache && isset($this->cacheFetch[$uri])) {
+    public function fetch(string $uri): Resource {
+        if ($this->cache && isset($this->cacheFetch[$uri])) {
             return $this->cacheFetch[$uri];
         }
         foreach ($this->mappings as $rule) {
@@ -296,7 +310,7 @@ class UriNormalizer {
                 }
             }
 
-            if ($cache) {
+            if ($this->cache) {
                 $this->cacheFetch[$uri]          = $meta;
                 $this->cacheFetch[(string) $url] = $meta;
             }
