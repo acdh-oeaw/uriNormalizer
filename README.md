@@ -35,6 +35,10 @@ For some services (like ORCID or VIAF) it can be done just with an [HTTP content
 The second aim of this package is to allow you to retrieve RDF metadata from named entity URIs/URLs without being bothered by all those service-specific peculiarities.
 And as such a retrieval involves quite some time, a caching option is also provided.
 
+## Automatically generated documentation
+
+https://acdh-oeaw.github.io/arche-docs/devdocs/classes/acdhOeaw-UriNormalizer.html
+
 ## Installation
 
 ```
@@ -100,7 +104,6 @@ echo $response->getBody() . "\ntime: $t s\n";
 # Use your own normalization rules
 # and supply a custom Guzzle HTTP client (can be any PSR-18 one) supplying authentication
 ###
-
 $rules = [
   [
     "match"   => "^https://(?:my.)own.namespace/([0-9]+)(?:/.*)?$",

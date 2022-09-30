@@ -74,7 +74,7 @@ class UriNormalizer {
      * @param string $uri
      * @param bool $requireMatch
      * @return string
-     * @see normalize()
+     * @see UriNormalizer::UriNormalizer::normalize()
      */
     static public function gNormalize(string $uri, bool $requireMatch = true): string {
         return self::$obj->normalize($uri, $requireMatch);
@@ -90,7 +90,7 @@ class UriNormalizer {
      *   the `UriNormalizer::init()` is used)
      * @param bool $requireMatch should an exception be rised if the $uri 
      *   matches no rule
-     * @see normalizeMeta()
+     * @see UriNormalizer::normalizeMeta()
      */
     static public function gNormalizeMeta(Resource $res, string $idProp = '',
                                           bool $requireMatch = true): void {
@@ -104,7 +104,7 @@ class UriNormalizer {
      * 
      * @param string $uri
      * @return ResponseInterface
-     * @see resolve()
+     * @see UriNormalizer::resolve()
      */
     static public function gResolve(string $uri): ResponseInterface {
         return self::$obj->resolve($uri);
@@ -117,7 +117,7 @@ class UriNormalizer {
      * 
      * @param string $uri
      * @return Resource
-     * @see fetch()
+     * @see UriNormalizer::fetch()
      */
     static public function gFetch(string $uri): Resource {
         return self::$obj->fetch($uri);
