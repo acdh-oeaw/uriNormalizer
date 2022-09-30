@@ -271,7 +271,6 @@ class UriNormalizer {
     private function fetchUrl(string &$url, string $method,
                               UriNormalizerRule $rule): ResponseInterface {
         $headers = ['Accept' => $rule->format];
-echo "\n$url\n";
         try {
             $redirectUrl = new Uri($url);
             do {
@@ -292,7 +291,6 @@ echo "\n$url\n";
         if ($code !== 200 || $contentType !== $rule->format) {
             throw new UriNormalizerException("Failed to fetch RDF data from $url with code $code and content-type: $contentType");
         }
-echo "$url\n";
         return $response;
     }
 }
