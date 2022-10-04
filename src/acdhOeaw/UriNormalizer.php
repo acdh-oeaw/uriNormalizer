@@ -31,6 +31,8 @@ use EasyRdf\Resource;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\RequestInterface;
+use Psr\SimpleCache\CacheInterface;
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
@@ -60,13 +62,13 @@ class UriNormalizer {
      * @param ClientInterface|null $client a PSR-18 HTTP client to be used to 
      *   resolve URIs. If not provided, a new instance of a `\GuzzleHttp\Client` 
      *   is used.
-     * @param bool $cache should caching be used? (cache consumes memory but
-     *   provides speedup for calls supplying same URLs/URIs)
+     * @param CacheInterface|null $cache instance of a PSR-16 compatible cache
+     *   object for caching normalize()/resolve()/normalize() results
      * @see UriNormalizer::__construct()
      */
     static public function init(?array $mappings = null, string $idProp = '',
                                 ?ClientInterface $client = null,
-                                bool $cache = true): void {
+                                ?CacheInterface $cache = null): void {
         self::$obj = new UriNormalizer($mappings, $idProp, $client, $cache);
     }
 
@@ -78,7 +80,7 @@ class UriNormalizer {
      * @param string $uri
      * @param bool $requireMatch
      * @return string
-     * @see UriNormalizer::UriNormalizer::normalize()
+     * @see UriNormalizer::normalize()
      */
     static public function gNormalize(string $uri, bool $requireMatch = true): string {
         return self::$obj->normalize($uri, $requireMatch);
@@ -107,10 +109,10 @@ class UriNormalizer {
      * Call `UriNormalizer::init()` before first use.
      * 
      * @param string $uri
-     * @return ResponseInterface
+     * @return RequestInterface
      * @see UriNormalizer::resolve()
      */
-    static public function gResolve(string $uri): ResponseInterface {
+    static public function gResolve(string $uri): RequestInterface {
         return self::$obj->resolve($uri);
     }
 
@@ -134,25 +136,7 @@ class UriNormalizer {
     private array $mappings;
     private string $idProp;
     private ClientInterface $client;
-    private bool $cache;
-
-    /**
-     * 
-     * @var array<string, ResponseInterface>
-     */
-    private array $cacheResolve = [];
-
-    /**
-     * 
-     * @var array<string, Resource>
-     */
-    private array $cacheFetch = [];
-
-    /**
-     * 
-     * @var array<string, string>
-     */
-    private array $cacheNormalize = [];
+    private CacheInterface $cache;
 
     /**
      * @param array<UriNormalizerRule|array<string, string>|\stdClass>|null $mappings  
@@ -165,13 +149,12 @@ class UriNormalizer {
      * @param ClientInterface|null $client a PSR-18 HTTP client to be used to 
      *   resolve URIs. If not provided, a new instance of a `\GuzzleHttp\Client` 
      *   is used.
-     * @param bool $cache should caching be used? Cache consumes memory but
-     *   provides speedup for calls supplying same URLs/URIs. This can be
-     *   particularly important for resolve() and fetch() calls.
+     * @param CacheInterface|null $cache instance of a PSR-16 compatible cache
+     *   object for caching normalize()/resolve()/normalize() results
      */
     public function __construct(?array $mappings = null, string $idProp = '',
                                 ?ClientInterface $client = null,
-                                bool $cache = true) {
+                                ?CacheInterface $cache = null) {
         if ($mappings === null) {
             $mappings = UriNormRules::getRules();
         }
@@ -179,7 +162,9 @@ class UriNormalizer {
         $this->mappings = array_map(fn($x) => UriNormalizerRule::factory($x), $mappings);
         $this->idProp   = $idProp;
         $this->client   = $client ?? new Client();
-        $this->cache    = $cache;
+        if ($cache !== null) {
+            $this->cache = $cache;
+        }
     }
 
     /**
@@ -192,8 +177,10 @@ class UriNormalizer {
      * @throws UriNormalizerException
      */
     public function normalize(string $uri, bool $requireMatch = true): string {
-        if ($this->cache && isset($this->cacheNormalize[$uri])) {
-            return $this->cacheNormalize[$uri];
+        $cacheKey = 'n:' . $uri;
+        $result   = isset($this->cache) ? $this->cache->get($cacheKey, null) : null;
+        if ($result) {
+            return $result;
         }
         foreach ($this->mappings as $rule) {
             $count = 0;
@@ -202,10 +189,7 @@ class UriNormalizer {
                 throw new UriNormalizerException("Wrong normalization rule: match $rule->match replace $rule->replace");
             }
             if ($count > 0) {
-                if ($this->cache) {
-                    $this->cacheNormalize[$uri]  = $norm;
-                    $this->cacheNormalize[$norm] = $norm;
-                }
+                $this->setCache('n:' . $uri, 'n:' . $norm, $norm);
                 return $norm;
             }
         }
@@ -242,22 +226,19 @@ class UriNormalizer {
     }
 
     /**
-     * Resolves a given URI to the URL fetching its RDF metadata and returns
-     * a corresponding PSR-7 response object.
+     * Resolves a given URI to a PSR-7 request fetching its RDF metadata.
      * 
      * Throws the UriNormalizerException if the resolving fails.
      * 
-     * The final URL (which may differ from the supplied $uri parameter because
-     * of normalization and redirects) is provided in the Location header of the
-     * returned Response object.
-     * 
      * @param string $uri
-     * @return ResponseInterface
+     * @return Request
      * @throws UriNormalizerException
      */
-    public function resolve(string $uri): ResponseInterface {
-        if ($this->cache && isset($this->cacheResolve[$uri])) {
-            return $this->cacheResolve[$uri];
+    public function resolve(string $uri): Request {
+        $cacheKey = 'r:' . $uri;
+        $result   = isset($this->cache) ? $this->cache->get($cacheKey, null) : null;
+        if ($result) {
+            return $result;
         }
         foreach ($this->mappings as $rule) {
             $count = 0;
@@ -266,21 +247,16 @@ class UriNormalizer {
                 continue;
             }
 
-            $response = $this->fetchUrl($url, 'GET', $rule);
-            $response = $response->withHeader('Location', (string) $url);
-
-            if ($this->cache) {
-                $this->cacheResolve[$uri]          = $response;
-                $this->cacheResolve[(string) $url] = $response;
-            }
-
-            return $response;
+            $request = new Request('HEAD', $url, ['Accept' => $rule->format]);
+            $this->fetchUrl($request);
+            $this->setCache('r:' . $uri, 'r:' . $request->getUri(), $request);
+            return $request;
         }
         throw new UriNormalizerException("$uri doesn't match any rule");
     }
 
     /**
-     * Tries to fetch RDF metadata for a given URI.
+     * Fetches RDF metadata for a given URI.
      * 
      * Throws UriNormalizerException when the retrieval fails.
      * 
@@ -289,8 +265,10 @@ class UriNormalizer {
      * @throws UriNormalizerException
      */
     public function fetch(string $uri): Resource {
-        if ($this->cache && isset($this->cacheFetch[$uri])) {
-            return $this->cacheFetch[$uri];
+        $cacheKey = 'f:' . $uri;
+        $result   = isset($this->cache) ? $this->cache->get($cacheKey, null) : null;
+        if ($result) {
+            return $result;
         }
         foreach ($this->mappings as $rule) {
             $count = 0;
@@ -299,22 +277,20 @@ class UriNormalizer {
                 continue;
             }
 
-            $response = $this->fetchUrl($url, 'GET', $rule);
+            $request  = new Request('GET', $url, ['Accept' => $rule->format]);
+            $response = $this->fetchUrl($request);
             $graph    = new Graph();
             $graph->parse((string) $response->getBody(), $rule->format);
             $meta     = $graph->resource($uri);
             if (count($meta->propertyUris()) === 0) {
-                $meta = $graph->resource(preg_replace("`" . $rule->match . "`", $rule->replace, $url));
+                $altUri = preg_replace("`" . $rule->match . "`", $rule->replace, (string) $request->getUri());
+                $meta   = $graph->resource($altUri);
                 if (count($meta->propertyUris()) === 0) {
-                    throw new UriNormalizerException("RDF data fetched for $uri resolved to $url don't contain matching subject");
+                    throw new UriNormalizerException("RDF data fetched for $uri resolved to $url does't contain matching subject");
                 }
             }
 
-            if ($this->cache) {
-                $this->cacheFetch[$uri]          = $meta;
-                $this->cacheFetch[(string) $url] = $meta;
-            }
-
+            $this->setCache('f:' . $uri, 'f:' . $url, $meta);
             return $meta;
         }
         throw new UriNormalizerException("$uri doesn't match any rule");
@@ -322,35 +298,57 @@ class UriNormalizer {
 
     /**
      * 
-     * @param string $url
-     * @param string $method
-     * @param UriNormalizerRule $rule
+     * @param Request $request
      * @return ResponseInterface
      * @throws UriNormalizerException
      */
-    private function fetchUrl(string &$url, string $method,
-                              UriNormalizerRule $rule): ResponseInterface {
-        $headers = ['Accept' => $rule->format];
+    private function fetchUrl(RequestInterface &$request): ResponseInterface {
+        $accept = $request->getHeader('Accept')[0] ?? '';
         try {
-            $redirectUrl = new Uri($url);
             do {
-                $url         = $redirectUrl;
-                $request     = new Request($method, $url, $headers);
-                $response    = $this->client->sendRequest($request);
-                $code        = $response->getStatusCode();
+                try {
+                    $response = $this->client->sendRequest($request);
+                } catch (ClientExceptionInterface $e) {
+                    // for ORCID
+                    if ($request->getMethod() === 'HEAD') {
+                        $request  = $request->withMethod('GET');
+                        $response = $this->client->sendRequest($request);
+                    }
+                    throw $e;
+                }
+
+                $code = $response->getStatusCode();
+
+                // for ORCID
+                if ($code >= 400 && $request->getMethod() === 'HEAD') {
+                    $request  = $request->withMethod('GET');
+                    $response = $this->client->sendRequest($request);
+                    $code     = $response->getStatusCode();
+                }
+
                 $contentType = $response->getHeader('Content-Type')[0] ?? '';
                 $contentType = trim(explode(';', $contentType)[0]);
                 $redirectUrl = $response->getHeader('Location')[0] ?? null;
                 if (!empty($redirectUrl)) {
-                    $redirectUrl = UriResolver::resolve($url, new Uri($redirectUrl));
+                    $redirectUrl = UriResolver::resolve($request->getUri(), new Uri($redirectUrl));
+                    $request     = $request->withUri($redirectUrl);
                 }
             } while ($code >= 300 && $code < 400 && $redirectUrl !== null);
         } catch (ClientExceptionInterface $e) {
+            $url = (string) $request->getUri();
             throw new UriNormalizerException("Failed to fetch RDF data from $url with " . $e->getMessage());
         }
-        if ($code !== 200 || $contentType !== $rule->format) {
+        if ($code !== 200 || $contentType !== $accept) {
+            $url = (string) $request->getUri();
             throw new UriNormalizerException("Failed to fetch RDF data from $url with code $code and content-type: $contentType");
         }
         return $response;
+    }
+
+    private function setCache(string $key1, string $key2, mixed $value): void {
+        if (isset($this->cache)) {
+            $this->cache->set($key1, $value);
+            $this->cache->set($key2, $value);
+        }
     }
 }

@@ -9,6 +9,9 @@ A class for **normalizing named entity URIs** from services like Geonames, GND, 
 
 By default the rules from the [arche-assets](https://github.com/acdh-oeaw/arche-assets) library are used by you can supply your own ones.
 
+Any PSR-16 compatible cache can be used to speed up normalization/retrieval of reccuring URIs.
+A combined in-memory and persistent sqlite-based cache implementation is provided as well.
+
 ## Context
 
 While looking at the named entity database services it's quite often difficult to tell which URL is a canonical URI for a given named entity.
@@ -71,39 +74,19 @@ $normalizer->normalizeMeta($resource, $property);
 echo (string) $resource->getResource($property);
 
 ###
-# Retrieve parsed RDF metadata from URI/URL
+# Retrieve parsed/raw RDF metadata from URI/URL
 ###
 // print parsed RDF metadata retrieved from the geonames
-// will take from a few milliseconds to few seconds depending on your network speed
-$t = microtime(true);
 $metadata = $normalizer->fetch('http://geonames.org/2761369/vienna.html');
-$t = (microtime(true) - $t);
-echo $metadata->dump('text') . "\ntime: $t s\n";
-// do it again - this time it will be almost immidiate thanks to the caching
-$t = microtime(true);
-$metadata = $normalizer->fetch('http://geonames.org/2761369/vienna.html');
-$t = (microtime(true) - $t);
-echo $metadata->dump('text') . "\ntime: $t s\n";
+echo $metadata->dump('text') . "\n";
 
-###
-# Retrieve raw RDF metadata from URI/URL 
-###
-// print raw RDF metadata retrieved from the geonames
-// will take from a few milliseconds to few seconds depending on your network speed
-$t = microtime(true);
-$response = $normalizer->resolve('http://geonames.org/2761369/vienna.html');
-$t = (microtime(true) - $t);
-echo $response->getBody() . "\ntime: $t s\n";
-// do it again - this time it will be much faster thanks to the caching
-$t = microtime(true);
-$response = $normalizer->resolve('http://geonames.org/2761369/vienna.html');
-$t = (microtime(true) - $t);
-echo $response->getBody() . "\ntime: $t s\n";
+// get a PSR-7 request fetching the RDF metadata for a given geonames URL
+$request = $normalizer->resolve('http://geonames.org/2761369/vienna.html');
+echo $request->getUri() . "\n";
 
 ###
 # Use your own normalization rules
 # and supply a custom Guzzle HTTP client (can be any PSR-18 one) supplying authentication
-# also turn off caching
 ###
 $rules = [
   [
@@ -121,6 +104,30 @@ echo $normalizer->normalize('https://my.own.namespace/123/foo');
 // obviously won't work but if the https://own.namespace would exist,
 // it would be queried with the HTTP BASIC auth as set up above
 $normalizer->fetch('https://my.own.namespace/123/foo');
+
+###
+# Use cache
+###
+$cache = new \acdhOeaw\UriNormalizerCache('db.sqlite');
+$normalizer = new \acdhOeaw\UriNormalizer(cache: $cache);
+// first retrieval should take 0.1-1 second depending on your connection speed
+$t = microtime(true);
+$metadata = $normalizer->fetch('http://geonames.org/2761369/vienna.html');
+$t = (microtime(true) - $t);
+echo $metadata->dump('text') . "\ntime: $t s\n";
+// second retrieval should be very quick thanks to in-memory cache
+$t = microtime(true);
+$metadata = $normalizer->fetch('http://geonames.org/2761369/vienna.html');
+$t = (microtime(true) - $t);
+echo $metadata->dump('text') . "\ntime: $t s\n";
+// a completely separate UriNormalizer instance still benefits from the persistent
+// sqlite cache
+$cache2 = new \acdhOeaw\UriNormalizerCache('db.sqlite');
+$normalizer2 = new \acdhOeaw\UriNormalizer(cache: $cache);
+$t = microtime(true);
+$metadata = $normalizer2->fetch('http://geonames.org/2761369/vienna.html');
+$t = (microtime(true) - $t);
+echo $metadata->dump('text') . "\ntime: $t s\n";
 
 ###
 # As a global singleton

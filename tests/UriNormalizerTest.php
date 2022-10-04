@@ -28,8 +28,10 @@ namespace acdhOeaw;
 
 use EasyRdf\Graph;
 use EasyRdf\Resource;
-use GuzzleHttp\Psr7\Response;
+use GuzzleHttp\Psr7\Request;
+use GuzzleHttp\Psr7\Utils;
 use acdhOeaw\UriNormalizerException;
+use acdhOeaw\UriNormalizerCache;
 
 /**
  * Description of IndexerTest
@@ -40,6 +42,13 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
 
     const ID_PROP = 'https://id/prop';
 
+    private function initCache(bool $withDb = true): UriNormalizerCache {
+        $dbPath = $withDb ? __DIR__ . '/../tests.sqlite' : null;
+        $cache  = new UriNormalizerCache($dbPath);
+        $cache->clear();
+        return $cache;
+    }
+
     public function testInit(): void {
         $mappings = UriNormRules::getRules();
         UriNormalizer::init($mappings, self::ID_PROP);
@@ -47,6 +56,10 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $this->assertEquals($url, UriNormalizer::gNormalize('https://sample.uri', false));
     }
 
+    /**
+     * 
+     * @depends testInit
+     */
     public function testGeonames(): void {
         $valid = 'https://sws.geonames.org/276136/';
         $bad   = [
@@ -55,10 +68,14 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         foreach ($bad as $i) {
             $this->assertEquals($valid, UriNormalizer::gNormalize($i));
         }
-        $this->assertInstanceOf(Response::class, UriNormalizer::gResolve($valid));
+        $this->assertInstanceOf(Request::class, UriNormalizer::gResolve($valid));
         $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch($valid));
     }
 
+    /**
+     * 
+     * @depends testInit
+     */
     public function testGazetteer(): void {
         $valid = 'https://gazetteer.dainst.org/place/2282705';
         $bad   = [
@@ -71,10 +88,14 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         foreach ($bad as $i) {
             $this->assertEquals($valid, UriNormalizer::gNormalize($i));
         }
-        $this->assertInstanceOf(Response::class, UriNormalizer::gResolve($valid));
+        $this->assertInstanceOf(Request::class, UriNormalizer::gResolve($valid));
         $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch($valid));
     }
 
+    /**
+     * 
+     * @depends testInit
+     */
     public function testPleiades(): void {
         $valid = 'https://pleiades.stoa.org/places/658494';
         $bad   = [
@@ -87,10 +108,14 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         foreach ($bad as $i) {
             $this->assertEquals($valid, UriNormalizer::gNormalize($i));
         }
-        $this->assertInstanceOf(Response::class, UriNormalizer::gResolve($valid));
+        $this->assertInstanceOf(Request::class, UriNormalizer::gResolve($valid));
         $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch($valid));
     }
 
+    /**
+     * 
+     * @depends testInit
+     */
     public function testViaf(): void {
         $valid = 'http://viaf.org/viaf/8110691';
         $bad   = [
@@ -103,11 +128,12 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         foreach ($bad as $i) {
             $this->assertEquals($valid, UriNormalizer::gNormalize($i));
         }
-        $this->assertInstanceOf(Response::class, UriNormalizer::gResolve($valid));
+        $this->assertInstanceOf(Request::class, UriNormalizer::gResolve($valid));
         $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch($valid));
     }
 
     public function testGnd(): void {
+        $norm  = new UriNormalizer();
         $valid = 'https://d-nb.info/gnd/4491366-7';
         $bad   = [
             'http://d-nb.info/gnd/4491366-7',
@@ -115,15 +141,19 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             'http://aaa.d-nb.info/gnd/4491366-7',
         ];
         foreach ($bad as $i) {
-            $this->assertEquals($valid, UriNormalizer::gNormalize($i));
+            $this->assertEquals($valid, $norm->normalize($i));
         }
-        $this->assertInstanceOf(Response::class, UriNormalizer::gResolve($valid));
-        $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch($valid));
+        $this->assertInstanceOf(Request::class, $norm->resolve($valid));
+        $this->assertInstanceOf(Resource::class, $norm->fetch($valid));
 
         // with within-gnd redirect to https://d-nb.info/gnd/118560077/about/lds.rdf
-        $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch('https://d-nb.info/gnd/1089894554'));
+        $this->assertInstanceOf(Resource::class, $norm->fetch('https://d-nb.info/gnd/1089894554'));
     }
 
+    /**
+     * 
+     * @depends testInit
+     */
     public function testWikidata(): void {
         $valid = 'http://www.wikidata.org/entity/Q42';
         $bad   = [
@@ -137,11 +167,12 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         foreach ($bad as $i) {
             $this->assertEquals($valid, UriNormalizer::gNormalize($i));
         }
-        $this->assertInstanceOf(Response::class, UriNormalizer::gResolve($valid));
+        $this->assertInstanceOf(Request::class, UriNormalizer::gResolve($valid));
         $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch($valid));
     }
 
     public function testOrcid(): void {
+        $norm  = new UriNormalizer();
         $valid = 'https://orcid.org/0000-0002-5274-8278';
         $bad   = [
             'https://orcid.org/0000-0002-5274-8278',
@@ -150,10 +181,10 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             'https://orcid.org/0000-00025274-8278',
         ];
         foreach ($bad as $i) {
-            $this->assertEquals($valid, UriNormalizer::gNormalize($i));
+            $this->assertEquals($valid, $norm->normalize($i));
         }
-        $this->assertInstanceOf(Response::class, UriNormalizer::gResolve($valid));
-        $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch($valid));
+        $this->assertInstanceOf(Request::class, $norm->resolve($valid));
+        $this->assertInstanceOf(Resource::class, $norm->fetch($valid));
     }
 
     /**
@@ -169,10 +200,14 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         foreach ($bad as $i) {
             $this->assertEquals($valid, UriNormalizer::gNormalize($i));
         }
-        $this->assertInstanceOf(Response::class, UriNormalizer::gResolve($valid));
+        $this->assertInstanceOf(Request::class, UriNormalizer::gResolve($valid));
         $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch($valid));
     }
 
+    /**
+     * 
+     * @depends testInit
+     */
     public function testPeriodo(): void {
         $valid = 'http://n2t.net/ark:/99152/p0m63njncbv';
         $bad   = [
@@ -185,10 +220,14 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         foreach ($bad as $i) {
             $this->assertEquals($valid, UriNormalizer::gNormalize($i), $i);
         }
-        $this->assertInstanceOf(Response::class, UriNormalizer::gResolve($valid));
+        $this->assertInstanceOf(Request::class, UriNormalizer::gResolve($valid));
         $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch($valid));
     }
 
+    /**
+     * 
+     * @depends testInit
+     */
     public function testChronontology(): void {
         $valid = 'https://chronontology.dainst.org/period/rYh7ggsMyaSj';
         $bad   = [
@@ -200,7 +239,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             $this->assertEquals($valid, UriNormalizer::gNormalize($i));
         }
         try {
-            $this->assertInstanceOf(Response::class, UriNormalizer::gResolve($valid));
+            $this->assertInstanceOf(Request::class, UriNormalizer::gResolve($valid));
             $this->assertTrue(false);
         } catch (UriNormalizerException $e) {
             $this->assertEquals("$valid doesn't match any rule", $e->getMessage());
@@ -213,6 +252,10 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         }
     }
 
+    /**
+     * 
+     * @depends testInit
+     */
     public function testArche(): void {
         $toTest = [
             'https://arche.acdh.oeaw.ac.at/api/1234'                       => 'https://arche.acdh.oeaw.ac.at/api/1234',
@@ -234,6 +277,10 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         }
     }
 
+    /**
+     * 
+     * @depends testInit
+     */
     public function testResource(): void {
         $graph = new Graph();
         $res   = $graph->resource('.');
@@ -278,40 +325,22 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         UriNormalizer::gResolve($uri);
     }
 
-    public function testNormalizeCache(): void {
-        $src   = 'https://isni.org/isni/0000-0001-2872-2353';
-        $target = 'https://isni.org/isni/0000000128722353';
-        $n   = new UriNormalizer();
-
-        $t0 = microtime(true);
-        $v1 = $n->normalize($src);
-        $t1 = microtime(true);
-        $v2 = $n->normalize($src);
-        $t2 = microtime(true);
-        
-        $t2 = $t2 - $t1;
-        $t1 = $t1 - $t0;
-        
-        $this->assertEquals($target, $v1);
-        $this->assertEquals($target, $v2);
-        $this->assertGreaterThan(0.00001, $t1);
-        $this->assertLessThan(0.0001, $t2);
-        $this->assertGreaterThan(10, $t1 / $t2);
-    }
     public function testResolveCache(): void {
-        $url = 'https://d-nb.info/gnd/4491366-7';
-        $n   = new UriNormalizer();
+        $emptyBody = Utils::streamFor('');
+        $cache     = $this->initCache();
+        $url       = 'https://d-nb.info/gnd/4491366-7';
+        $n         = new UriNormalizer(cache: $cache);
 
         $t0 = microtime(true);
-        $r1 = $n->resolve($url);
+        $r1 = $n->resolve($url)->withBody($emptyBody);
         $t1 = microtime(true);
-        $r2 = $n->resolve($url);
+        $r2 = $n->resolve($url)->withBody($emptyBody);
         $t2 = microtime(true);
-        $r3 = $n->resolve('https://d-nb.info/gnd/4491366-7/about/lds.ttl', true);
+        $r3 = $n->resolve('https://d-nb.info/gnd/4491366-7/about/lds.ttl', true)->withBody($emptyBody);
         $t3 = microtime(true);
 
-        $this->assertSame($r1, $r2);
-        $this->assertSame($r2, $r3);
+        $this->assertEquals($r1, $r2);
+        $this->assertEquals($r2, $r3);
 
         $t3 = $t3 - $t2;
         $t2 = $t2 - $t1;
@@ -323,8 +352,9 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
     }
 
     public function testFetchCache(): void {
-        $url = 'https://d-nb.info/gnd/4491366-7';
-        $n   = new UriNormalizer();
+        $cache = $this->initCache();
+        $url   = 'https://d-nb.info/gnd/4491366-7';
+        $n     = new UriNormalizer(cache: $cache);
 
         $t0 = microtime(true);
         $r1 = $n->fetch($url);
@@ -334,7 +364,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $r3 = $n->fetch('https://d-nb.info/gnd/4491366-7/about/lds.ttl', true);
         $t3 = microtime(true);
 
-        $this->assertSame($r1, $r2);
+        $this->assertEquals($r1->dump('text'), $r2->dump('text'));
         $this->assertSame($r2, $r3);
 
         $t3 = $t3 - $t2;
