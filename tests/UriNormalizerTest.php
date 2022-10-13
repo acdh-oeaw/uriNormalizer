@@ -336,7 +336,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $t1 = microtime(true);
         $r2 = $n->resolve($url)->withBody($emptyBody);
         $t2 = microtime(true);
-        $r3 = $n->resolve('https://d-nb.info/gnd/4491366-7/about/lds.ttl', true)->withBody($emptyBody);
+        $r3 = $n->resolve('https://d-nb.info/gnd/4491366-7/about/lds.ttl')->withBody($emptyBody);
         $t3 = microtime(true);
 
         $this->assertEquals($r1, $r2);
@@ -361,7 +361,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $t1 = microtime(true);
         $r2 = $n->fetch($url);
         $t2 = microtime(true);
-        $r3 = $n->fetch('https://d-nb.info/gnd/4491366-7/about/lds.ttl', true);
+        $r3 = $n->fetch('https://d-nb.info/gnd/4491366-7/about/lds.ttl');
         $t3 = microtime(true);
 
         $this->assertEquals($r1->dump('text'), $r2->dump('text'));

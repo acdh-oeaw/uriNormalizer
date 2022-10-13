@@ -79,11 +79,7 @@ class UriNormalizerCache implements CacheInterface {
 
     public function deleteMultiple($keys): bool {
         foreach ($keys as $i) {
-            unset($this->memCache[$i]);
-        }
-        if (isset($this->pdo)) {
-            $bindings = substr(str_repeat(', ?', count($keys)), 2);
-            $this->pdo->prepare("DELETE FROM cache WHERE key IN ($bindings)")->execute($keys);
+            $this->delete($i);
         }
         return true;
     }
@@ -109,7 +105,7 @@ class UriNormalizerCache implements CacheInterface {
 
     public function getMultiple($keys, mixed $default = null): iterable {
         foreach ($keys as $key) {
-            yield $this->get($key, $default);
+            yield $key => $this->get($key, $default);
         }
     }
 
@@ -131,6 +127,9 @@ class UriNormalizerCache implements CacheInterface {
         $this->memCache[$key] = $value;
 
         if (isset($this->pdo)) {
+            if (is_int($ttl)) {
+                $ttl = new DateInterval("P{$ttl}S");
+            }
             $ttl     ??= new DateInterval("P1D");
             $expires = (new DateTimeImmutable())->add($ttl)->format('Y-m-d h:i:s');
             $query   = $this->pdo->prepare("INSERT OR REPLACE INTO cache (key, value, expires) VALUES (?, ?, ?)");
@@ -140,6 +139,12 @@ class UriNormalizerCache implements CacheInterface {
         return true;
     }
 
+    /**
+     * 
+     * @param iterable<string, mixed> $values
+     * @param null|int|DateInterval $ttl
+     * @return bool
+     */
     public function setMultiple(iterable $values,
                                 null | int | DateInterval $ttl = null): bool {
         foreach ($values as $key => $value) {

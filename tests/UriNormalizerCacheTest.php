@@ -52,14 +52,14 @@ class UriNormalizerCacheTest extends \PHPUnit\Framework\TestCase {
         $this->assertNull($cache1->get('foo'));
         $this->assertEquals('bar', $cache1->get('foo', 'bar'));
         $res = iterator_to_array($cache1->getMultiple(['foo', 'bar'], 'baz'));
-        $this->assertEquals(['baz', 'baz'], $res);
+        $this->assertEquals(['foo' => 'baz', 'bar' => 'baz'], $res);
 
         $this->assertTrue($cache1->set('foo', 'bar'));
         $this->assertTrue($cache1->has('foo'));
         $this->assertEquals('bar', $cache1->get('foo'));
         $this->assertEquals('bar', $cache1->get('foo', 'baz'));
         $res = iterator_to_array($cache1->getMultiple(['foo', 'bar'], 'baz'));
-        $this->assertEquals(['bar', 'baz'], $res);
+        $this->assertEquals(['foo' => 'bar', 'bar' => 'baz'], $res);
 
         $this->assertFalse($cache2->has('foo'));
         $this->assertNull($cache2->get('foo'));
@@ -70,19 +70,19 @@ class UriNormalizerCacheTest extends \PHPUnit\Framework\TestCase {
         $this->assertFalse($cache1->has('foo'));
 
         $this->assertTrue($cache1->setMultiple(['FOO', 'BAR']));
-        $this->assertTrue($cache1->has(0));
-        $this->assertTrue($cache1->has(1));
-        $this->assertFalse($cache1->has(2));
+        $this->assertTrue($cache1->has('0'));
+        $this->assertTrue($cache1->has('1'));
+        $this->assertFalse($cache1->has('2'));
 
         $this->assertTrue($cache1->deleteMultiple(['FOO', 'BAR']));
-        $this->assertTrue($cache1->has(0));
-        $this->assertTrue($cache1->has(1));
-        $this->assertFalse($cache1->has(2));
+        $this->assertTrue($cache1->has('0'));
+        $this->assertTrue($cache1->has('1'));
+        $this->assertFalse($cache1->has('2'));
 
-        $this->assertTrue($cache1->deleteMultiple([0, 1]));
-        $this->assertFalse($cache1->has(0));
-        $this->assertFalse($cache1->has(1));
-        $this->assertFalse($cache1->has(2));
+        $this->assertTrue($cache1->deleteMultiple(['0', '1']));
+        $this->assertFalse($cache1->has('0'));
+        $this->assertFalse($cache1->has('1'));
+        $this->assertFalse($cache1->has('2'));
 
         $this->assertTrue($cache1->set('foo', 'BAR'));
         $this->assertEquals('BAR', $cache1->get('foo'));
@@ -98,14 +98,14 @@ class UriNormalizerCacheTest extends \PHPUnit\Framework\TestCase {
         $this->assertNull($cache1->get('foo'));
         $this->assertEquals('bar', $cache1->get('foo', 'bar'));
         $res = iterator_to_array($cache1->getMultiple(['foo', 'bar'], 'baz'));
-        $this->assertEquals(['baz', 'baz'], $res);
+        $this->assertEquals(['foo' => 'baz', 'bar' => 'baz'], $res);
 
         $this->assertTrue($cache1->set('foo', 'bar'));
         $this->assertTrue($cache1->has('foo'));
         $this->assertEquals('bar', $cache1->get('foo'));
         $this->assertEquals('bar', $cache1->get('foo', 'baz'));
         $res = iterator_to_array($cache1->getMultiple(['foo', 'bar'], 'baz'));
-        $this->assertEquals(['bar', 'baz'], $res);
+        $this->assertEquals(['foo' => 'bar', 'bar' => 'baz'], $res);
 
         $this->assertTrue($cache2->has('foo'));
         $this->assertEquals('bar', $cache2->get('foo'));
@@ -123,19 +123,19 @@ class UriNormalizerCacheTest extends \PHPUnit\Framework\TestCase {
         $this->assertFalse($cache1->has('foo'));
 
         $this->assertTrue($cache1->setMultiple(['FOO', 'BAR']));
-        $this->assertTrue($cache1->has(0));
-        $this->assertTrue($cache1->has(1));
-        $this->assertFalse($cache1->has(2));
+        $this->assertTrue($cache1->has('0'));
+        $this->assertTrue($cache1->has('1'));
+        $this->assertFalse($cache1->has('2'));
 
         $this->assertTrue($cache1->deleteMultiple(['FOO', 'BAR']));
-        $this->assertTrue($cache1->has(0));
-        $this->assertTrue($cache1->has(1));
-        $this->assertFalse($cache1->has(2));
+        $this->assertTrue($cache1->has('0'));
+        $this->assertTrue($cache1->has('1'));
+        $this->assertFalse($cache1->has('2'));
 
-        $this->assertTrue($cache1->deleteMultiple([0, 1]));
-        $this->assertFalse($cache1->has(0));
-        $this->assertFalse($cache1->has(1));
-        $this->assertFalse($cache1->has(2));
+        $this->assertTrue($cache1->deleteMultiple(['0', '1']));
+        $this->assertFalse($cache1->has('0'));
+        $this->assertFalse($cache1->has('1'));
+        $this->assertFalse($cache1->has('2'));
 
         $this->assertTrue($cache1->set('foo', 'BAR'));
         $this->assertEquals('BAR', $cache1->get('foo'));

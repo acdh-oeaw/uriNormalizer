@@ -242,7 +242,7 @@ class UriNormalizer {
         }
         foreach ($this->mappings as $rule) {
             $count = 0;
-            $url   = preg_replace("`" . $rule->match . "`", $rule->resolve, $uri, 1, $count);
+            $url   = (string) preg_replace("`" . $rule->match . "`", $rule->resolve, $uri, 1, $count);
             if ($count === 0 || empty($rule->resolve)) {
                 continue;
             }
@@ -272,7 +272,7 @@ class UriNormalizer {
         }
         foreach ($this->mappings as $rule) {
             $count = 0;
-            $url   = preg_replace("`" . $rule->match . "`", $rule->resolve, $uri, 1, $count);
+            $url   = (string) preg_replace("`" . $rule->match . "`", $rule->resolve, $uri, 1, $count);
             if ($count === 0 || empty($rule->resolve)) {
                 continue;
             }
