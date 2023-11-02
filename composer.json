@@ -14,7 +14,7 @@
         "php": ">= 8.0",
         "acdh-oeaw/arche-assets": "^3.5",
         "sweetrdf/rdf-interface": "^2.0.0-RC1",
-        "sweetrdf/quick-rdf": "^2.0.0-RC1",
+        "sweetrdf/quick-rdf": "^2.0.0-RC1 | dev-master",
         "sweetrdf/quick-rdf-io": "^1",
         "guzzlehttp/guzzle": "^7.5",
         "psr/simple-cache": "^3.0"
