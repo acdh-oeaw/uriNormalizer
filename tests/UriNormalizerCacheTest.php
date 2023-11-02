@@ -26,8 +26,6 @@
 
 namespace acdhOeaw;
 
-use acdhOeaw\UriNormalizerCache;
-
 /**
  * Description of IndexerTest
  *

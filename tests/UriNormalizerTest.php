@@ -26,12 +26,11 @@
 
 namespace acdhOeaw;
 
-use EasyRdf\Graph;
-use EasyRdf\Resource;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Utils;
-use acdhOeaw\UriNormalizerException;
-use acdhOeaw\UriNormalizerCache;
+use quickRdf\Dataset;
+use quickRdf\DatasetNode;
+use quickRdf\DataFactory as DF;
 
 /**
  * Description of IndexerTest
@@ -69,7 +68,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             $this->assertEquals($valid, UriNormalizer::gNormalize($i));
         }
         $this->assertInstanceOf(Request::class, UriNormalizer::gResolve($valid));
-        $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch($valid));
+        $this->assertInstanceOf(DatasetNode::class, UriNormalizer::gFetch($valid));
     }
 
     /**
@@ -89,7 +88,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             $this->assertEquals($valid, UriNormalizer::gNormalize($i));
         }
         $this->assertInstanceOf(Request::class, UriNormalizer::gResolve($valid));
-        $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch($valid));
+        $this->assertInstanceOf(DatasetNode::class, UriNormalizer::gFetch($valid));
     }
 
     /**
@@ -109,7 +108,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             $this->assertEquals($valid, UriNormalizer::gNormalize($i));
         }
         $this->assertInstanceOf(Request::class, UriNormalizer::gResolve($valid));
-        $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch($valid));
+        $this->assertInstanceOf(DatasetNode::class, UriNormalizer::gFetch($valid));
     }
 
     /**
@@ -129,7 +128,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             $this->assertEquals($valid, UriNormalizer::gNormalize($i));
         }
         $this->assertInstanceOf(Request::class, UriNormalizer::gResolve($valid));
-        $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch($valid));
+        $this->assertInstanceOf(DatasetNode::class, UriNormalizer::gFetch($valid));
     }
 
     public function testGnd(): void {
@@ -144,10 +143,10 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             $this->assertEquals($valid, $norm->normalize($i));
         }
         $this->assertInstanceOf(Request::class, $norm->resolve($valid));
-        $this->assertInstanceOf(Resource::class, $norm->fetch($valid));
+        $this->assertInstanceOf(DatasetNode::class, $norm->fetch($valid));
 
         // with within-gnd redirect to https://d-nb.info/gnd/118560077/about/lds.rdf
-        $this->assertInstanceOf(Resource::class, $norm->fetch('https://d-nb.info/gnd/1089894554'));
+        $this->assertInstanceOf(DatasetNode::class, $norm->fetch('https://d-nb.info/gnd/1089894554'));
     }
 
     /**
@@ -168,7 +167,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             $this->assertEquals($valid, UriNormalizer::gNormalize($i));
         }
         $this->assertInstanceOf(Request::class, UriNormalizer::gResolve($valid));
-        $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch($valid));
+        $this->assertInstanceOf(DatasetNode::class, UriNormalizer::gFetch($valid));
     }
 
     public function testOrcid(): void {
@@ -184,7 +183,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             $this->assertEquals($valid, $norm->normalize($i));
         }
         $this->assertInstanceOf(Request::class, $norm->resolve($valid));
-        $this->assertInstanceOf(Resource::class, $norm->fetch($valid));
+        $this->assertInstanceOf(DatasetNode::class, $norm->fetch($valid));
     }
 
     /**
@@ -201,7 +200,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             $this->assertEquals($valid, UriNormalizer::gNormalize($i));
         }
         $this->assertInstanceOf(Request::class, UriNormalizer::gResolve($valid));
-        $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch($valid));
+        $this->assertInstanceOf(DatasetNode::class, UriNormalizer::gFetch($valid));
     }
 
     /**
@@ -221,7 +220,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             $this->assertEquals($valid, UriNormalizer::gNormalize($i), $i);
         }
         $this->assertInstanceOf(Request::class, UriNormalizer::gResolve($valid));
-        $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch($valid));
+        $this->assertInstanceOf(DatasetNode::class, UriNormalizer::gFetch($valid));
     }
 
     /**
@@ -245,7 +244,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             $this->assertEquals("$valid doesn't match any rule", $e->getMessage());
         }
         try {
-            $this->assertInstanceOf(Resource::class, UriNormalizer::gFetch($valid));
+            $this->assertInstanceOf(DatasetNode::class, UriNormalizer::gFetch($valid));
             $this->assertTrue(false);
         } catch (UriNormalizerException $e) {
             $this->assertEquals("$valid doesn't match any rule", $e->getMessage());
@@ -282,11 +281,10 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
      * @depends testInit
      */
     public function testResource(): void {
-        $graph = new Graph();
-        $res   = $graph->resource('.');
-        $res->addResource(self::ID_PROP, 'http://aaa.geonames.org/276136/borj-ej-jaaiyat.html');
-        UriNormalizer::gNormalizeMeta($res);
-        $this->assertEquals('https://sws.geonames.org/276136/', $res->getResource(self::ID_PROP));
+        $graph = new Dataset();
+        $graph->add(DF::quad(DF::namedNode('foo'), DF::namedNode(self::ID_PROP), DF::namedNode('http://aaa.geonames.org/276136/borj-ej-jaaiyat.html')));
+        UriNormalizer::gNormalizeMeta($graph);
+        $this->assertEquals('https://sws.geonames.org/276136/', $graph[0]->getObject()->getValue());
     }
 
     public function testFactory(): void {
@@ -304,15 +302,23 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
 
     public function testError(): void {
         UriNormalizer::init();
-        $this->expectErrorMessage('Id property not defined');
-        UriNormalizer::gNormalizeMeta((new Graph())->resource('.'));
+        try {
+            UriNormalizer::gNormalizeMeta(new Dataset());
+            $this->assertTrue(false);
+        } catch (UriNormalizerException $e) {
+            $this->assertEquals('Id property not defined', $e->getMessage());
+        }
     }
 
     public function testNoMatch(): void {
         UriNormalizer::init();
         $uri = 'http://foo/bar';
-        $this->expectErrorMessage("$uri doesn't match any rule");
-        UriNormalizer::gNormalize($uri);
+        try {
+            UriNormalizer::gNormalize($uri);
+            $this->assertTrue(false);
+        } catch (UriNormalizerException $e) {
+            $this->assertEquals("$uri doesn't match any rule", $e->getMessage());
+        }
     }
 
     public function testWrongResolveRule(): void {
@@ -321,8 +327,12 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         ];
         $uri   = 'http://bar/foo';
         UriNormalizer::init($rules);
-        $this->expectErrorMessageMatches("`^Failed to fetch RDF data from http://foo/bar with `");
-        UriNormalizer::gResolve($uri);
+        try {
+            UriNormalizer::gResolve($uri);
+            $this->assertTrue(false);
+        } catch (UriNormalizerException $e) {
+            $this->assertStringStartsWith("Failed to fetch RDF data from http://foo/bar with ", $e->getMessage());
+        }
     }
 
     public function testResolveCache(): void {
@@ -364,7 +374,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $r3 = $n->fetch('https://d-nb.info/gnd/4491366-7/about/lds.ttl');
         $t3 = microtime(true);
 
-        $this->assertEquals($r1->dump('text'), $r2->dump('text'));
+        $this->assertTrue($r1->equals($r2));
         $this->assertSame($r2, $r3);
 
         $t3 = $t3 - $t2;

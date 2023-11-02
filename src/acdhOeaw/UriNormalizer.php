@@ -26,8 +26,6 @@
 
 namespace acdhOeaw;
 
-use EasyRdf\Graph;
-use EasyRdf\Resource;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -35,10 +33,16 @@ use Psr\Http\Message\RequestInterface;
 use Psr\SimpleCache\CacheInterface;
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\Request;
-use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\Uri;
 use GuzzleHttp\Psr7\UriResolver;
-use GuzzleHttp\Psr7\Utils;
+use rdfInterface\DatasetInterface;
+use rdfInterface\NamedNodeInterface;
+use rdfInterface\QuadInterface;
+use rdfInterface\DataFactoryInterface;
+use quickRdf\DataFactory as DF;
+use quickRdf\DatasetNode;
+use termTemplates\PredicateTemplate as PT;
+use quickRdfIo\Util as RdfIoUtil;
 
 /**
  * A simply utility class normalizing the URIs
@@ -64,12 +68,31 @@ class UriNormalizer {
      *   is used.
      * @param CacheInterface|null $cache instance of a PSR-16 compatible cache
      *   object for caching normalize()/resolve()/normalize() results
+     * @param DataFactoryInterface $dataFactory factory class to be used to create
+     *   RDF terms. If not provided, a quickRdf\DataFactory from the sweetrdf/quick-rdf
+     *   library is used.
      * @see UriNormalizer::__construct()
      */
     static public function init(?array $mappings = null, string $idProp = '',
                                 ?ClientInterface $client = null,
-                                ?CacheInterface $cache = null): void {
-        self::$obj = new UriNormalizer($mappings, $idProp, $client, $cache);
+                                ?CacheInterface $cache = null,
+                                ?DataFactoryInterface $dataFactory = null): void {
+        self::$obj = new UriNormalizer($mappings, $idProp, $client, $cache, $dataFactory);
+    }
+
+    /**
+     * A static version of the normalizeNN() method.
+     * 
+     * Call `UriNormalizer::init()` before first use.
+     * 
+     * @param NamedNodeInterface|string $uri
+     * @param bool $requireMatch
+     * @return NamedNodeInterface
+     * @see UriNormalizer::normalize()
+     */
+    static public function gNormalizeNN(NamedNodeInterface | string $uri,
+                                        bool $requireMatch = true): NamedNodeInterface {
+        return self::$obj->normalizeNN($uri, $requireMatch);
     }
 
     /**
@@ -77,12 +100,13 @@ class UriNormalizer {
      * 
      * Call `UriNormalizer::init()` before first use.
      * 
-     * @param string $uri
+     * @param NamedNodeInterface|string $uri
      * @param bool $requireMatch
      * @return string
      * @see UriNormalizer::normalize()
      */
-    static public function gNormalize(string $uri, bool $requireMatch = true): string {
+    static public function gNormalize(NamedNodeInterface | string $uri,
+                                      bool $requireMatch = true): string {
         return self::$obj->normalize($uri, $requireMatch);
     }
 
@@ -91,14 +115,15 @@ class UriNormalizer {
      * 
      * Call `UriNormalizer::init()` before first use.
      * 
-     * @param Resource $res metadata to be processed
-     * @param string $idProp id property URI (if not provided, value passed to 
+     * @param DatasetInterface $res metadata to be processed
+     * @param NamedNodeInterface|string $idProp id property URI (if not provided, value passed to 
      *   the `UriNormalizer::init()` is used)
      * @param bool $requireMatch should an exception be rised if the $uri 
      *   matches no rule
      * @see UriNormalizer::normalizeMeta()
      */
-    static public function gNormalizeMeta(Resource $res, string $idProp = '',
+    static public function gNormalizeMeta(DatasetInterface $res,
+                                          NamedNodeInterface | string $idProp = '',
                                           bool $requireMatch = true): void {
         self::$obj->normalizeMeta($res, $idProp, $requireMatch);
     }
@@ -108,11 +133,11 @@ class UriNormalizer {
      * 
      * Call `UriNormalizer::init()` before first use.
      * 
-     * @param string $uri
+     * @param NamedNodeInterface|string $uri
      * @return RequestInterface
      * @see UriNormalizer::resolve()
      */
-    static public function gResolve(string $uri): RequestInterface {
+    static public function gResolve(NamedNodeInterface | string $uri): RequestInterface {
         return self::$obj->resolve($uri);
     }
 
@@ -121,11 +146,11 @@ class UriNormalizer {
      * 
      * Call `UriNormalizer::init()` before first use.
      * 
-     * @param string $uri
-     * @return Resource
+     * @param NamedNodeInterface|string $uri
+     * @return DatasetNode
      * @see UriNormalizer::fetch()
      */
-    static public function gFetch(string $uri): Resource {
+    static public function gFetch(NamedNodeInterface | string $uri): DatasetNode {
         return self::$obj->fetch($uri);
     }
 
@@ -134,9 +159,10 @@ class UriNormalizer {
      * @var array<UriNormalizerRule>
      */
     private array $mappings;
-    private string $idProp;
+    private PT | null $idTmpl = null;
     private ClientInterface $client;
     private CacheInterface $cache;
+    private DataFactoryInterface $dataFactory;
 
     /**
      * @param array<UriNormalizerRule|array<string, string>|\stdClass>|null $mappings  
@@ -144,39 +170,52 @@ class UriNormalizer {
      *   objects, an attempt to cast them is made with the 
      *   `UriNormRule::factory()`. If null is passed, rules provided by the
      *   UriNormRules::getRules() class are used.
-     * @param string $idProp a default RDF property to be used by the 
+     * @param NamedNodeInterface|string $idProp a default RDF property to be used by the 
      *   `normalizeMeta()` method
      * @param ClientInterface|null $client a PSR-18 HTTP client to be used to 
      *   resolve URIs. If not provided, a new instance of a `\GuzzleHttp\Client` 
      *   is used.
      * @param CacheInterface|null $cache instance of a PSR-16 compatible cache
      *   object for caching normalize()/resolve()/normalize() results
+     * @param DataFactoryInterface $dataFactory factory class to be used to create
+     *   RDF terms. If not provided, a quickRdf\DataFactory from the sweetrdf/quick-rdf
+     *   library is used.
      */
-    public function __construct(?array $mappings = null, string $idProp = '',
+    public function __construct(?array $mappings = null,
+                                NamedNodeInterface | string $idProp = '',
                                 ?ClientInterface $client = null,
-                                ?CacheInterface $cache = null) {
+                                ?CacheInterface $cache = null,
+                                ?DataFactoryInterface $dataFactory = null) {
         if ($mappings === null) {
             $mappings = UriNormRules::getRules();
         }
 
+        $this->dataFactory = $dataFactory ?? new DF();
+
         $this->mappings = array_map(fn($x) => UriNormalizerRule::factory($x), $mappings);
-        $this->idProp   = $idProp;
-        $this->client   = $client ?? new Client();
+        if (!empty($idProp)) {
+            $this->idTmpl = new PT(is_string($idProp) ? $this->dataFactory::namedNode($idProp) : $idProp);
+        }
+        $this->client = $client ?? new Client();
         if ($cache !== null) {
             $this->cache = $cache;
         }
     }
 
     /**
-     * Returns a normalized URIs.
+     * Returns a normalized URI as a NamedNodeInterface object.
      * 
-     * @param string $uri URI to be normalized
+     * @param NamedNodeInterface|string $uri URI to be normalized
      * @param bool $requireMatch should an exception be rised if the $uri 
      *   matches no rule
-     * @return string
+     * @return NamedNodeInterface
      * @throws UriNormalizerException
      */
-    public function normalize(string $uri, bool $requireMatch = true): string {
+    public function normalizeNN(NamedNodeInterface | string $uri,
+                                bool $requireMatch = true): NamedNodeInterface {
+        if (is_string($uri)) {
+            $uri = $this->dataFactory::namedNode($uri);
+        }
         $cacheKey = 'n:' . $uri;
         $result   = isset($this->cache) ? $this->cache->get($cacheKey, null) : null;
         if ($result) {
@@ -189,6 +228,7 @@ class UriNormalizer {
                 throw new UriNormalizerException("Wrong normalization rule: match $rule->match replace $rule->replace");
             }
             if ($count > 0) {
+                $norm = $this->dataFactory::namedNode($norm);
                 $this->setCache('n:' . $uri, 'n:' . $norm, $norm);
                 return $norm;
             }
@@ -200,29 +240,44 @@ class UriNormalizer {
     }
 
     /**
+     * Returns a normalized URI as string.
+     * 
+     * @param NamedNodeInterface|string $uri URI to be normalized
+     * @param bool $requireMatch should an exception be rised if the $uri 
+     *   matches no rule
+     * @return string
+     * @throws UriNormalizerException
+     */
+    public function normalize(NamedNodeInterface | string $uri,
+                              bool $requireMatch = true): string {
+        return (string) $this->normalizeNN($uri, $requireMatch);
+    }
+
+    /**
      * Performs id URI normalization on all id properties of a given
      * metadata resource object.
      * 
      * The normalization is performed in-place, therefore the return type is void.
      * 
-     * @param Resource $res metadata to be processed
-     * @param string $idProp id property URI (if not provided, value passed to 
+     * @param DatasetInterface $res metadata to be processed
+     * @param NamedNodeInterface|string $idProp id property URI (if not provided, value passed to 
      *   the object constructor is used)
      * @param bool $requireMatch should an exception be rised if the $uri 
      *   matches no rule
      * @throws UriNormalizerException
      */
-    public function normalizeMeta(Resource $res, string $idProp = '',
+    public function normalizeMeta(DatasetInterface $res,
+                                  NamedNodeInterface | string $idProp = '',
                                   bool $requireMatch = true): void {
-        $idProp = empty($idProp) ? $this->idProp : $idProp;
-        if (empty($idProp)) {
+        $idTmpl = $this->idTmpl;
+        if (!empty($idProp)) {
+            $idTmpl = new PT(is_string($idProp) ? $this->dataFactory::namedNode($idProp) : $idProp);
+        }
+        if ($idTmpl === null) {
             throw new UriNormalizerException('Id property not defined');
         }
 
-        foreach ($res->allResources($idProp) as $id) {
-            $res->deleteResource($idProp, $id);
-            $res->addResource($idProp, $this->normalize((string) $id, $requireMatch));
-        }
+        $res->forEach(fn($x) => $x->withObject($this->normalizeNN($x->getObject(), $requireMatch)), $idTmpl);
     }
 
     /**
@@ -230,11 +285,12 @@ class UriNormalizer {
      * 
      * Throws the UriNormalizerException if the resolving fails.
      * 
-     * @param string $uri
+     * @param NamedNodeInterface|string $uri
      * @return Request
      * @throws UriNormalizerException
      */
-    public function resolve(string $uri): Request {
+    public function resolve(NamedNodeInterface | string $uri): Request {
+        $uri      = (string) $uri;
         $cacheKey = 'r:' . $uri;
         $result   = isset($this->cache) ? $this->cache->get($cacheKey, null) : null;
         if ($result) {
@@ -260,11 +316,12 @@ class UriNormalizer {
      * 
      * Throws UriNormalizerException when the retrieval fails.
      * 
-     * @param string $uri
-     * @return Resource
+     * @param NamedNodeInterface|string $uri
+     * @return DatasetNode
      * @throws UriNormalizerException
      */
-    public function fetch(string $uri): Resource {
+    public function fetch(NamedNodeInterface | string $uri): DatasetNode {
+        $uri      = (string) $uri;
         $cacheKey = 'f:' . $uri;
         $result   = isset($this->cache) ? $this->cache->get($cacheKey, null) : null;
         if ($result) {
@@ -279,13 +336,12 @@ class UriNormalizer {
 
             $request  = new Request('GET', $url, ['Accept' => $rule->format]);
             $response = $this->fetchUrl($request);
-            $graph    = new Graph();
-            $graph->parse((string) $response->getBody(), $rule->format);
-            $meta     = $graph->resource($uri);
-            if (count($meta->propertyUris()) === 0) {
+            $meta     = new DatasetNode($this->dataFactory::namedNode($uri));
+            $meta->add(RdfIoUtil::parse($response, $this->dataFactory, $rule->format));
+            if (count($meta) === 0) {
                 $altUri = preg_replace("`" . $rule->match . "`", $rule->replace, (string) $request->getUri());
-                $meta   = $graph->resource($altUri);
-                if (count($meta->propertyUris()) === 0) {
+                $meta   = $meta->withNode($this->dataFactory::namedNode($altUri));
+                if (count($meta) === 0) {
                     throw new UriNormalizerException("RDF data fetched for $uri resolved to $url does't contain matching subject");
                 }
             }
