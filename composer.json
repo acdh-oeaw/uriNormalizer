@@ -13,7 +13,7 @@
     "require": {
         "php": ">= 8.0",
         "acdh-oeaw/arche-assets": "^3.5",
-        "sweetrdf/rdf-interface": "^2.0.0-RC1",
+        "sweetrdf/rdf-interface": "^2.0.0-RC1 | dev-master",
         "sweetrdf/quick-rdf": "^2.0.0-RC1 | dev-master",
         "sweetrdf/quick-rdf-io": "^1 | dev-master",
         "guzzlehttp/guzzle": "^7.5",
