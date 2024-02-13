@@ -14,7 +14,7 @@
         "php": ">= 8.0",
         "acdh-oeaw/arche-assets": "^3.5",
         "sweetrdf/quick-rdf": "^2",
-        "sweetrdf/quick-rdf-io": "^1.0.6",
+        "sweetrdf/quick-rdf-io": "^1.0.7",
         "guzzlehttp/guzzle": "^7.5",
         "psr/simple-cache": "^3.0"
     },
