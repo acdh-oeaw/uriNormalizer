@@ -159,7 +159,7 @@ class UriNormalizer {
      * @var array<UriNormalizerRule>
      */
     private array $mappings;
-    private PT | null $idTmpl = null;
+    private PT $idTmpl;
     private ClientInterface $client;
     private CacheInterface $cache;
     private DataFactoryInterface $dataFactory;
@@ -269,14 +269,11 @@ class UriNormalizer {
     public function normalizeMeta(DatasetInterface $res,
                                   NamedNodeInterface | string $idProp = '',
                                   bool $requireMatch = true): void {
-        $idTmpl = $this->idTmpl;
         if (!empty($idProp)) {
             $idTmpl = new PT(is_string($idProp) ? $this->dataFactory::namedNode($idProp) : $idProp);
+        } else {
+            $idTmpl = $this->idTmpl ?? throw new UriNormalizerException('Id property not defined');
         }
-        if ($idTmpl === null) {
-            throw new UriNormalizerException('Id property not defined');
-        }
-
         $res->forEach(fn($x) => $x->withObject($this->normalizeNN($x->getObject(), $requireMatch)), $idTmpl);
     }
 
