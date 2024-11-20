@@ -255,6 +255,28 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
      * 
      * @depends testInit
      */
+    public function testRor(): void {
+        $norm  = new UriNormalizer();
+        $valid = 'https://ror.org/05xs36f43';
+        $this->assertEquals($valid, $norm->normalize($valid));
+        $this->assertInstanceOf(Request::class, $norm->resolve($valid));
+        try {
+            $this->assertInstanceOf(DatasetNode::class, $norm->fetch($valid));
+        } catch (UriNormalizerException $e) {
+            $this->assertEquals("RDF data fetched for $valid resolved to https://api.ror.org/v2/organizations/05xs36f43 does't contain matching subject", $e->getMessage());
+        }
+        $bad   = 'https://ror.org/123';
+        try {
+            $this->assertInstanceOf(Request::class, $norm->resolve($bad));
+        } catch (UriNormalizerException $e) {
+            $this->assertEquals("Failed to fetch RDF data from https://api.ror.org/v2/organizations/123 with code 404 and content-type: application/json", $e->getMessage());
+        }
+    }
+
+    /**
+     * 
+     * @depends testInit
+     */
     public function testArche(): void {
         $toTest = [
             'https://arche.acdh.oeaw.ac.at/api/1234'                       => 'https://arche.acdh.oeaw.ac.at/api/1234',
