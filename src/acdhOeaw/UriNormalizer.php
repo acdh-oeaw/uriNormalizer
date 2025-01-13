@@ -372,7 +372,7 @@ class UriNormalizer {
 
                 $code = $response->getStatusCode();
 
-                // for ORCID
+                // for ORCID and VIAF
                 if ($code >= 400 && $request->getMethod() === 'HEAD') {
                     $request  = $request->withMethod('GET');
                     $response = $this->client->sendRequest($request);
