@@ -413,19 +413,21 @@ class UriNormalizer {
             if (!is_array($v)) {
                 $v = [$v];
             }
-            if (is_array($v)) {
-                foreach ($v as $i) {
-                    if ($i === null) {
-                        continue;
-                    }
-                    if (is_scalar($i)) {
-                        $dataset->add(DF::quad($sbj, $prop, DF::literal($i)));
-                    } else {
-                        $blank = DF::blankNode();
-                        $dataset->add(DF::quad($sbj, $prop, $blank));
-                        $this->processJsonObject($i, $blank, $dataset);
-                    }
+            $allScalar = array_sum(array_map(fn($x) => !is_scalar($x), $v)) === 0;
+            $n         = 0;
+            foreach ($v as $i) {
+                if ($i === null) {
+                    continue;
                 }
+                if (is_scalar($i)) {
+                    $p = $allScalar ? DF::namedNode($k . $n) : $prop;
+                    $dataset->add(DF::quad($sbj, $p, DF::literal($i)));
+                } else {
+                    $blank = DF::blankNode();
+                    $dataset->add(DF::quad($sbj, $prop, $blank));
+                    $this->processJsonObject($i, $blank, $dataset);
+                }
+                $n++;
             }
         }
     }
