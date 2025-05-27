@@ -260,12 +260,11 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $valid = 'https://ror.org/05xs36f43';
         $this->assertEquals($valid, $norm->normalize($valid));
         $this->assertInstanceOf(Request::class, $norm->resolve($valid));
-        try {
-            $this->assertInstanceOf(DatasetNode::class, $norm->fetch($valid));
-        } catch (UriNormalizerException $e) {
-            $this->assertEquals("RDF data fetched for $valid resolved to https://api.ror.org/v2/organizations/05xs36f43 does't contain matching subject", $e->getMessage());
-        }
-        $bad   = 'https://ror.org/123';
+        $meta  = $norm->fetch($valid);
+        $this->assertInstanceOf(DatasetNode::class, $meta);
+        $this->assertGreaterThan(1, count($meta));
+
+        $bad = 'https://ror.org/123';
         try {
             $this->assertInstanceOf(Request::class, $norm->resolve($bad));
         } catch (UriNormalizerException $e) {

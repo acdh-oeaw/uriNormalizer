@@ -37,6 +37,7 @@ use GuzzleHttp\Psr7\Uri;
 use GuzzleHttp\Psr7\UriResolver;
 use rdfInterface\DatasetInterface;
 use rdfInterface\NamedNodeInterface;
+use rdfInterface\BlankNodeInterface;
 use rdfInterface\QuadInterface;
 use rdfInterface\DataFactoryInterface;
 use quickRdf\DataFactory as DF;
@@ -50,6 +51,8 @@ use quickRdfIo\Util as RdfIoUtil;
  * @author zozlak
  */
 class UriNormalizer {
+
+    const FORMAT_JSON = 'application/json';
 
     static private self $obj;
 
@@ -334,7 +337,11 @@ class UriNormalizer {
             $request  = new Request('GET', $url, ['Accept' => $rule->format]);
             $response = $this->fetchUrl($request);
             $meta     = new DatasetNode($this->dataFactory::namedNode($uri));
-            $meta->add(RdfIoUtil::parse($response, $this->dataFactory, $rule->format));
+            if ($rule->format === self::FORMAT_JSON) {
+                $this->processJsonObject(json_decode((string) $response->getBody()), $meta->getNode(), $meta);
+            } else {
+                $meta->add(RdfIoUtil::parse($response, $this->dataFactory, $rule->format));
+            }
             if (count($meta) === 0) {
                 $altUri = preg_replace("`" . $rule->match . "`", $rule->replace, (string) $request->getUri());
                 $meta   = $meta->withNode($this->dataFactory::namedNode($altUri));
@@ -396,6 +403,31 @@ class UriNormalizer {
             throw new UriNormalizerException("Failed to fetch RDF data from $url with code $code and content-type: $contentType");
         }
         return $response;
+    }
+
+    private function processJsonObject(object $obj,
+                                       BlankNodeInterface | NamedNodeInterface $sbj,
+                                       DatasetInterface $dataset): void {
+        foreach (get_object_vars($obj) as $k => $v) {
+            $prop = DF::namedNode($k);
+            if (!is_array($v)) {
+                $v = [$v];
+            }
+            if (is_array($v)) {
+                foreach ($v as $i) {
+                    if ($i === null) {
+                        continue;
+                    }
+                    if (is_scalar($i)) {
+                        $dataset->add(DF::quad($sbj, $prop, DF::literal($i)));
+                    } else {
+                        $blank = DF::blankNode();
+                        $dataset->add(DF::quad($sbj, $prop, $blank));
+                        $this->processJsonObject($i, $blank, $dataset);
+                    }
+                }
+            }
+        }
     }
 
     private function setCache(string $key1, string $key2, mixed $value): void {
