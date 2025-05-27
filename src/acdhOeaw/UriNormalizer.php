@@ -341,12 +341,11 @@ class UriNormalizer {
             if ($rule->format !== self::FORMAT_JSON) {
                 $meta->add(RdfIoUtil::parse($response, $this->dataFactory, $rule->format));
             } else {
-                $json = json_decode((string) $response->getBody());
+                $json  = json_decode((string) $response->getBody());
                 $this->processJsonObject($json, $meta->getNode(), $meta);
                 $class = $rule->class ?? '@type';
-                if (isset($json->$class)) {
-                    $meta->add(DF::quadNoSubject(DF::namedNode(RDF::RDF_TYPE), DF::namedNode($json->$class)));
-                }
+                $class = isset($json->$class) ? $json->$class : 'unknownClass';
+                $meta->add(DF::quadNoSubject(DF::namedNode(RDF::RDF_TYPE), DF::namedNode($class)));
             }
             if (count($meta) === 0) {
                 $altUri = preg_replace("`" . $rule->match . "`", $rule->replace, (string) $request->getUri());
