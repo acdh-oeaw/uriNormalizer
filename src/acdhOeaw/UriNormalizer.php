@@ -35,6 +35,7 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Uri;
 use GuzzleHttp\Psr7\UriResolver;
+use zozlak\RdfConstants as RDF;
 use rdfInterface\DatasetInterface;
 use rdfInterface\NamedNodeInterface;
 use rdfInterface\BlankNodeInterface;
@@ -337,10 +338,15 @@ class UriNormalizer {
             $request  = new Request('GET', $url, ['Accept' => $rule->format]);
             $response = $this->fetchUrl($request);
             $meta     = new DatasetNode($this->dataFactory::namedNode($uri));
-            if ($rule->format === self::FORMAT_JSON) {
-                $this->processJsonObject(json_decode((string) $response->getBody()), $meta->getNode(), $meta);
-            } else {
+            if ($rule->format !== self::FORMAT_JSON) {
                 $meta->add(RdfIoUtil::parse($response, $this->dataFactory, $rule->format));
+            } else {
+                $json = json_decode((string) $response->getBody());
+                $this->processJsonObject($json, $meta->getNode(), $meta);
+                $class = $rule->class ?? '@type';
+                if (isset($json->$class)) {
+                    $meta->add(DF::quadNoSubject(DF::namedNode(RDF::RDF_TYPE), DF::namedNode($json->$class)));
+                }
             }
             if (count($meta) === 0) {
                 $altUri = preg_replace("`" . $rule->match . "`", $rule->replace, (string) $request->getUri());
