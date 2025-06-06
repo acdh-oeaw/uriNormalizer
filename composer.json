@@ -16,7 +16,8 @@
         "sweetrdf/quick-rdf": "^2",
         "sweetrdf/quick-rdf-io": "^1.0.7",
         "guzzlehttp/guzzle": "^7.5",
-        "psr/simple-cache": "^3.0"
+        "psr/simple-cache": "^3.0",
+        "zozlak/guzzle-proxy-client": "^1.0"
     },
     "autoload": {
         "psr-4": {

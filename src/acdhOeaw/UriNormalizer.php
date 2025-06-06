@@ -36,6 +36,7 @@ use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Uri;
 use GuzzleHttp\Psr7\UriResolver;
 use zozlak\RdfConstants as RDF;
+use zozlak\ProxyClient;
 use rdfInterface\DatasetInterface;
 use rdfInterface\NamedNodeInterface;
 use rdfInterface\BlankNodeInterface;
@@ -200,7 +201,7 @@ class UriNormalizer {
         if (!empty($idProp)) {
             $this->idTmpl = new PT(is_string($idProp) ? $this->dataFactory::namedNode($idProp) : $idProp);
         }
-        $this->client = $client ?? new Client();
+        $this->client = $client ?? ProxyClient::factory();
         if ($cache !== null) {
             $this->cache = $cache;
         }
