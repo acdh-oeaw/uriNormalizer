@@ -26,6 +26,7 @@
 
 namespace acdhOeaw;
 
+use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Utils;
 use quickRdf\Dataset;
@@ -49,8 +50,9 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
     }
 
     public function testInit(): void {
+        $client   = Client(['headers' => ['user-agent' => 'ARCHE-url-checker/1.0 (https://github.com/acdh-oeaw/arche-doorkeeper; mzoltak@oeaw.ac.at)']]);
         $mappings = UriNormRules::getRules();
-        UriNormalizer::init($mappings, self::ID_PROP);
+        UriNormalizer::init($mappings, self::ID_PROP, $client);
         $url      = 'https://sample.uri';
         $this->assertEquals($url, UriNormalizer::gNormalize('https://sample.uri', false));
     }
