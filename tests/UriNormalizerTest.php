@@ -50,7 +50,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
     }
 
     public function testInit(): void {
-        $client   = Client(['headers' => ['user-agent' => 'ARCHE-url-checker/1.0 (https://github.com/acdh-oeaw/arche-doorkeeper; mzoltak@oeaw.ac.at)']]);
+        $client   = new Client(['headers' => ['user-agent' => 'ARCHE-url-checker/1.0 (https://github.com/acdh-oeaw/arche-doorkeeper; mzoltak@oeaw.ac.at)']]);
         $mappings = UriNormRules::getRules();
         UriNormalizer::init($mappings, self::ID_PROP, $client);
         $url      = 'https://sample.uri';
