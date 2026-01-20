@@ -81,7 +81,7 @@ class UriNormalizer {
                                 ?ClientInterface $client = null,
                                 ?CacheInterface $cache = null,
                                 ?DataFactoryInterface $dataFactory = null,
-                                ?RetryConfig $retryCfg = null): void {
+                                ?UriNormalizerRetryConfig $retryCfg = null): void {
         self::$obj = new UriNormalizer($mappings, $idProp, $client, $cache, $dataFactory, $retryCfg);
     }
 
@@ -168,7 +168,7 @@ class UriNormalizer {
     private ClientInterface $client;
     private CacheInterface $cache;
     private DataFactoryInterface $dataFactory;
-    private RetryConfig $retryCfg;
+    private UriNormalizerRetryConfig $retryCfg;
 
     /**
      * @param array<UriNormalizerRule|array<string, string>|\stdClass>|null $mappings  
@@ -192,7 +192,7 @@ class UriNormalizer {
                                 ?ClientInterface $client = null,
                                 ?CacheInterface $cache = null,
                                 ?DataFactoryInterface $dataFactory = null,
-                                ?RetryConfig $retryCfg = null) {
+                                ?UriNormalizerRetryConfig $retryCfg = null) {
         if ($mappings === null) {
             $mappings = UriNormRules::getRules();
         }
@@ -207,7 +207,7 @@ class UriNormalizer {
         if ($cache !== null) {
             $this->cache = $cache;
         }
-        $this->retryCfg = $retryCfg ?? new RetryConfig();
+        $this->retryCfg = $retryCfg ?? new UriNormalizerRetryConfig();
     }
 
     /**

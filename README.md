@@ -152,4 +152,15 @@ $resource->addResource($property, 'http://aaa.geonames.org/276136/borj-ej-jaaiya
 // returns 'https://sws.geonames.org/276136/'
 echo (string) $resource->getResource($property);
 
+###
+# Configure 3 retry attempts on HTTP 429 with a delay increasing with every retry (1.5, 3 and 4.5 seconds)
+###
+$retryCfg = new \acdhOeaw\UriNormalizerRetryConfig(
+    number: 3, 
+    delay: 1.5, 
+    scale: \acdhOeaw\UriNormalizerRetryConfig::SCALE_MULTI,
+    on: [429],
+);
+$normalizer = new \acdhOeaw\UriNormalizer(retryCfg: $retryCfg);
+$normalizer->resolve('http://geonames.org/2761369/vienna.html');
 ```

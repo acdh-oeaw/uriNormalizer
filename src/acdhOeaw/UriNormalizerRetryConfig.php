@@ -35,7 +35,7 @@ use Psr\Http\Client\ClientExceptionInterface;
  *
  * @author zozlak
  */
-class RetryConfig {
+class UriNormalizerRetryConfig {
 
     const SCALE_CONST = 'const';
     const SCALE_MULTI = 'multi';
