@@ -26,12 +26,16 @@
 
 namespace acdhOeaw;
 
+use Psr\Http\Client\ClientInterface;
+use Psr\Http\Client\ClientExceptionInterface;
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\Request;
+use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\Utils;
 use quickRdf\Dataset;
 use quickRdf\DatasetNode;
 use quickRdf\DataFactory as DF;
+use acdhOeaw\UriNormalizerException;
 
 /**
  * Description of IndexerTest
@@ -92,26 +96,26 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $this->assertInstanceOf(Request::class, UriNormalizer::gResolve($valid));
         $this->assertInstanceOf(DatasetNode::class, UriNormalizer::gFetch($valid));
     }
-
-    /**
-     * 
-     * @depends testInit
-     */
-    public function testPleiades(): void {
-        $valid = 'https://pleiades.stoa.org/places/658494';
-        $bad   = [
-            'https://pleiades.stoa.org/places/658494',
-            'http://pleiades.stoa.org/places/658494',
-            'http://pleiades.stoa.org/places/658494/carthage',
-            'http://pleiades.stoa.org/places/658494/ruins-of-ancient-church-at-kafr-nabo',
-            'http://aaa.pleiades.stoa.org/places/658494',
-        ];
-        foreach ($bad as $i) {
-            $this->assertEquals($valid, UriNormalizer::gNormalize($i));
-        }
-        $this->assertInstanceOf(Request::class, UriNormalizer::gResolve($valid));
-        $this->assertInstanceOf(DatasetNode::class, UriNormalizer::gFetch($valid));
-    }
+//  pleiades is behind a bots wall now
+//    /**
+//     * 
+//     * @depends testInit
+//     */
+//    public function testPleiades(): void {
+//        $valid = 'https://pleiades.stoa.org/places/658494';
+//        $bad   = [
+//            'https://pleiades.stoa.org/places/658494',
+//            'http://pleiades.stoa.org/places/658494',
+//            'http://pleiades.stoa.org/places/658494/carthage',
+//            'http://pleiades.stoa.org/places/658494/ruins-of-ancient-church-at-kafr-nabo',
+//            'http://aaa.pleiades.stoa.org/places/658494',
+//        ];
+//        foreach ($bad as $i) {
+//            $this->assertEquals($valid, UriNormalizer::gNormalize($i));
+//        }
+//        $this->assertInstanceOf(Request::class, UriNormalizer::gResolve($valid));
+//        $this->assertInstanceOf(DatasetNode::class, UriNormalizer::gFetch($valid));
+//    }
 
     /**
      * 
@@ -270,7 +274,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         try {
             $this->assertInstanceOf(Request::class, $norm->resolve($bad));
         } catch (UriNormalizerException $e) {
-            $this->assertEquals("Failed to fetch RDF data from https://api.ror.org/v2/organizations/123 with code 404 and content-type: application/json", $e->getMessage());
+            $this->assertEquals("Failed to fetch data from https://api.ror.org/v2/organizations/123 with status code 404", $e->getMessage());
         }
     }
 
@@ -354,7 +358,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             UriNormalizer::gResolve($uri);
             $this->assertTrue(false);
         } catch (UriNormalizerException $e) {
-            $this->assertStringStartsWith("Failed to fetch RDF data from http://foo/bar with ", $e->getMessage());
+            $this->assertStringStartsWith("Failed to fetch data from http://foo/bar with message cURL error 6: Could not resolve host: foo", $e->getMessage());
         }
     }
 
@@ -407,5 +411,121 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $this->assertLessThan($t1 / 100, $t3);
         $this->assertLessThan(0.0001, $t2);
         $this->assertLessThan(0.0001, $t3);
+    }
+
+    /**
+     * Tests retry behavior.
+     * 
+     * It's worth remembering that the initial return code >=400 causes HEAD
+     * to be turned into GET and is not counted as a retry. Once the switch
+     * to GET occured, retries are done with GET.
+     */
+    public function testRetry(): void {
+        $headers = ['content-type' => ['*/*']];
+        $uri     = 'https://id.acdh.oeaw.ac.at/foo';
+
+        // simple failure
+        $retry  = new RetryConfig();
+        $client = $this->createStub(ClientInterface::class);
+        $client->method('sendRequest')->willThrowException($this->createStub(ClientExceptionInterface::class));
+        $n      = new UriNormalizer(client: $client, retryCfg: $retry);
+        try {
+            $n->resolve($uri);
+            $this->assertTrue(false);
+        } catch (UriNormalizerException $e) {
+            $this->assertEquals("Failed to fetch data from $uri with message ", $e->getMessage());
+        }
+
+        // simple failure with retry
+        $retry  = new RetryConfig(2);
+        $client = $this->createStub(ClientInterface::class);
+        $client->method('sendRequest')->willReturn(
+            new Response(502), // HEAD
+            new Response(502), // GET
+            new Response(502), // 1st retry GET
+            new Response(502), // 2nd retry GET
+        );
+        $n      = new UriNormalizer(client: $client, retryCfg: $retry);
+        try {
+            $n->resolve($uri);
+            $this->assertTrue(false);
+        } catch (UriNormalizerException $e) {
+            $this->assertEquals("Failed to fetch data from $uri with status code 502", $e->getMessage());
+        }
+
+        // retry with no delay
+        $retry    = new RetryConfig(1);
+        $client   = $this->createStub(ClientInterface::class);
+        $client->method('sendRequest')->willReturn(
+            new Response(502), // HEAD
+            new Response(502), // GET
+            new Response(200, $headers), // retry
+        );
+        $n        = new UriNormalizer(client: $client, retryCfg: $retry);
+        $t0       = microtime(true);
+        $response = $n->resolve($uri);
+        $t1       = microtime(true);
+        $this->assertInstanceOf(Request::class, $response);
+        $this->assertLessThan(0.001, $t1 - $t0);
+
+        // retry with delay
+        $retry    = new RetryConfig(1, 0.5);
+        $client   = $this->createStub(ClientInterface::class);
+        $client->method('sendRequest')->willReturn(
+            new Response(502), // HEAD
+            new Response(502), // GET
+            new Response(200, $headers), // 1st retry GET
+        );
+        $n        = new UriNormalizer(client: $client, retryCfg: $retry);
+        $t0       = microtime(true);
+        $response = $n->resolve($uri);
+        $t1       = microtime(true);
+        $this->assertInstanceOf(Request::class, $response);
+        $this->assertLessThan(0.6, $t1 - $t0);
+        $this->assertGreaterThan(0.5, $t1 - $t0);
+
+        // multiple retries with delay and HEAD failure
+        $retry    = new RetryConfig(2, 0.2, RetryConfig::SCALE_MULTI);
+        $client   = $this->createStub(ClientInterface::class);
+        $client->method('sendRequest')->willReturn(
+            new Response(504), // HEAD
+            new Response(503), // GET
+            new Response(429), // 1st retry GET
+            new Response(200, $headers), // 2nd retry GET
+        );
+        $n        = new UriNormalizer(client: $client, retryCfg: $retry);
+        $t0       = microtime(true);
+        $response = $n->resolve($uri);
+        $t1       = microtime(true);
+        $this->assertInstanceOf(Request::class, $response);
+        $this->assertLessThan(0.7, $t1 - $t0);
+        $this->assertGreaterThan(0.6, $t1 - $t0);
+
+        // failure on no-retry code
+        $retry  = new RetryConfig(2, 0, RetryConfig::SCALE_CONST, [429]);
+        $client = $this->createStub(ClientInterface::class);
+        $client->method('sendRequest')->willReturn(
+            new Response(504), // HEAD
+            new Response(504), // GET
+        );
+        $n      = new UriNormalizer(client: $client, retryCfg: $retry);
+        try {
+            $n->resolve($uri);
+            $this->assertTrue(false);
+        } catch (UriNormalizerException $e) {
+            $this->assertEquals("Failed to fetch data from $uri with status code 504", $e->getMessage());
+        }
+
+        // failure on wrong mime
+        $retry  = new RetryConfig(2, 0, RetryConfig::SCALE_CONST);
+        $client = $this->createStub(ClientInterface::class);
+        $client->method('sendRequest')->willReturn(new Response(200));
+        $n      = new UriNormalizer(client: $client, retryCfg: $retry);
+        try {
+            $n->resolve($uri);
+            $this->assertTrue(false);
+        } catch (UriNormalizerException $e) {
+            $this->assertEquals("Failed to fetch RDF data from $uri response content type not/set doesn't match expected application/n-triples", $e->getMessage());
+        }
     }
 }

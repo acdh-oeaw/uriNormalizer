@@ -36,6 +36,7 @@ use GuzzleHttp\Psr7\Uri;
 use GuzzleHttp\Psr7\UriResolver;
 use zozlak\RdfConstants as RDF;
 use zozlak\ProxyClient;
+use zozlak\HttpAccept;
 use rdfInterface\DatasetInterface;
 use rdfInterface\NamedNodeInterface;
 use rdfInterface\BlankNodeInterface;
@@ -79,8 +80,9 @@ class UriNormalizer {
     static public function init(?array $mappings = null, string $idProp = '',
                                 ?ClientInterface $client = null,
                                 ?CacheInterface $cache = null,
-                                ?DataFactoryInterface $dataFactory = null): void {
-        self::$obj = new UriNormalizer($mappings, $idProp, $client, $cache, $dataFactory);
+                                ?DataFactoryInterface $dataFactory = null,
+                                ?RetryConfig $retryCfg = null): void {
+        self::$obj = new UriNormalizer($mappings, $idProp, $client, $cache, $dataFactory, $retryCfg);
     }
 
     /**
@@ -166,6 +168,7 @@ class UriNormalizer {
     private ClientInterface $client;
     private CacheInterface $cache;
     private DataFactoryInterface $dataFactory;
+    private RetryConfig $retryCfg;
 
     /**
      * @param array<UriNormalizerRule|array<string, string>|\stdClass>|null $mappings  
@@ -188,7 +191,8 @@ class UriNormalizer {
                                 NamedNodeInterface | string $idProp = '',
                                 ?ClientInterface $client = null,
                                 ?CacheInterface $cache = null,
-                                ?DataFactoryInterface $dataFactory = null) {
+                                ?DataFactoryInterface $dataFactory = null,
+                                ?RetryConfig $retryCfg = null) {
         if ($mappings === null) {
             $mappings = UriNormRules::getRules();
         }
@@ -203,6 +207,7 @@ class UriNormalizer {
         if ($cache !== null) {
             $this->cache = $cache;
         }
+        $this->retryCfg = $retryCfg ?? new RetryConfig();
     }
 
     /**
@@ -304,7 +309,7 @@ class UriNormalizer {
             }
 
             $request = new Request('HEAD', $url, ['Accept' => $rule->format]);
-            $this->fetchUrl($request);
+            $this->fetchUrlRetry($request);
             $this->setCache('r:' . $uri, 'r:' . $request->getUri(), $request);
             return $request;
         }
@@ -335,7 +340,7 @@ class UriNormalizer {
             }
 
             $request  = new Request('GET', $url, ['Accept' => $rule->format]);
-            $response = $this->fetchUrl($request);
+            $response = $this->fetchUrlRetry($request);
             $meta     = new DatasetNode($this->dataFactory::namedNode($uri));
             if ($rule->format !== self::FORMAT_JSON) {
                 $meta->add(RdfIoUtil::parse($response, $this->dataFactory, $rule->format));
@@ -361,51 +366,74 @@ class UriNormalizer {
     }
 
     /**
+     * Try to fetch a response to a given request handling retries.
      * 
-     * @param Request $request
-     * @return ResponseInterface
-     * @throws UriNormalizerException
+     * The $request parameter is passed by reference so the caller gets access
+     * to the finally resolved URL if there were redirects.
+     */
+    private function fetchUrlRetry(RequestInterface &$request): ResponseInterface {
+        $attempt = 0;
+        do {
+            $attempt++;
+            try {
+                $response = $this->fetchUrl($request);
+            } catch (ClientExceptionInterface $e) {
+                $response = $e;
+            }
+        } while ($this->retryCfg->retry($response, $attempt, $request));
+
+        $contentType  = $response->getHeader('Content-Type')[0] ?? 'not/set';
+        $contentType  = new HttpAccept($contentType);
+        $acceptHeader = $request->getHeader('Accept')[0] ?? '*/*';
+        $accept       = array_map(fn($x) => new HttpAccept($x), explode(',', $acceptHeader));
+        $match        = false;
+        foreach ($accept as $i) {
+            if ($i->matches($contentType)) {
+                $match = true;
+                break;
+            }
+        }
+        if (!$match) {
+            throw new UriNormalizerException("Failed to fetch RDF data from " . $request->getUri() . " response content type ".$contentType->getFullType()." doesn't match expected $acceptHeader");
+        }
+
+        return $response;
+    }
+
+    /**
+     * Try to fetch a given request following redirects
+     * 
+     * The $request parameter is passed by reference so the caller gets access
+     * to the finally resolved URL if there were redirects.
      */
     private function fetchUrl(RequestInterface &$request): ResponseInterface {
-        $accept = $request->getHeader('Accept')[0] ?? '';
-        try {
-            do {
-                try {
-                    $response = $this->client->sendRequest($request);
-                } catch (ClientExceptionInterface $e) {
-                    // for ORCID
-                    if ($request->getMethod() === 'HEAD') {
-                        $request  = $request->withMethod('GET');
-                        $response = $this->client->sendRequest($request);
-                    }
-                    throw $e;
-                }
-
-                $code = $response->getStatusCode();
-
-                // for ORCID and VIAF
-                if ($code >= 400 && $request->getMethod() === 'HEAD') {
+        do {
+            try {
+                $response = $this->client->sendRequest($request);
+            } catch (ClientExceptionInterface $e) {
+                // for services which don't like HEAD like ORCID or VIAF
+                if ($request->getMethod() === 'HEAD') {
                     $request  = $request->withMethod('GET');
                     $response = $this->client->sendRequest($request);
-                    $code     = $response->getStatusCode();
                 }
+                throw $e;
+            }
 
-                $contentType = $response->getHeader('Content-Type')[0] ?? '';
-                $contentType = trim(explode(';', $contentType)[0]);
-                $redirectUrl = $response->getHeader('Location')[0] ?? null;
-                if (!empty($redirectUrl)) {
-                    $redirectUrl = UriResolver::resolve($request->getUri(), new Uri($redirectUrl));
-                    $request     = $request->withUri($redirectUrl);
-                }
-            } while ($code >= 300 && $code < 400 && $redirectUrl !== null);
-        } catch (ClientExceptionInterface $e) {
-            $url = (string) $request->getUri();
-            throw new UriNormalizerException("Failed to fetch RDF data from $url with " . $e->getMessage());
-        }
-        if ($code !== 200 || $contentType !== $accept) {
-            $url = (string) $request->getUri();
-            throw new UriNormalizerException("Failed to fetch RDF data from $url with code $code and content-type: $contentType");
-        }
+            $code = $response->getStatusCode();
+
+            // for services which don't like HEAD like ORCID or VIAF
+            if ($code >= 400 && $request->getMethod() === 'HEAD') {
+                $request  = $request->withMethod('GET');
+                $response = $this->client->sendRequest($request);
+                $code     = $response->getStatusCode();
+            }
+
+            $redirectUrl = $response->getHeader('Location')[0] ?? null;
+            if (!empty($redirectUrl)) {
+                $redirectUrl = UriResolver::resolve($request->getUri(), new Uri($redirectUrl));
+                $request     = $request->withUri($redirectUrl);
+            }
+        } while ($code >= 300 && $code < 400 && $redirectUrl !== null);
         return $response;
     }
 
