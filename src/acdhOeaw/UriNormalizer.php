@@ -353,7 +353,7 @@ class UriNormalizer {
             }
             if (count($meta) === 0) {
                 $altUri = preg_replace("`" . $rule->match . "`", $rule->replace, (string) $request->getUri());
-                $meta   = $meta->withNode($this->dataFactory::namedNode($altUri));
+                $meta   = $meta->withNode($this->dataFactory::namedNode((string) $altUri));
                 if (count($meta) === 0) {
                     throw new UriNormalizerException("RDF data fetched for $uri resolved to $url does't contain matching subject");
                 }
@@ -394,7 +394,7 @@ class UriNormalizer {
             }
         }
         if (!$match) {
-            throw new UriNormalizerException("Failed to fetch RDF data from " . $request->getUri() . " response content type ".$contentType->getFullType()." doesn't match expected $acceptHeader");
+            throw new UriNormalizerException("Failed to fetch RDF data from " . $request->getUri() . " response content type " . $contentType->getFullType() . " doesn't match expected $acceptHeader");
         }
 
         return $response;
