@@ -394,7 +394,7 @@ class UriNormalizer {
             }
         }
         if (!$match) {
-            throw new UriNormalizerException("Failed to fetch RDF data from " . $request->getUri() . " response content type " . $contentType->getFullType() . " doesn't match expected $acceptHeader");
+            throw new UriNormalizerException("Failed to fetch data from " . $request->getUri() . " response content type " . $contentType->getFullType() . " doesn't match expected $acceptHeader");
         }
 
         return $response;
