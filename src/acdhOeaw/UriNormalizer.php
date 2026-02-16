@@ -242,7 +242,7 @@ class UriNormalizer {
             }
         }
         if ($requireMatch) {
-            throw new UriNormalizerException("$uri doesn't match any rule");
+            throw new UriNormalizerException("$uri doesn't match any rule", uri: $uri);
         }
         return $uri;
     }
@@ -313,7 +313,7 @@ class UriNormalizer {
             $this->setCache('r:' . $uri, 'r:' . $request->getUri(), $request);
             return $request;
         }
-        throw new UriNormalizerException("$uri doesn't match any rule");
+        throw new UriNormalizerException("$uri doesn't match any rule", uri: $uri);
     }
 
     /**
@@ -355,14 +355,14 @@ class UriNormalizer {
                 $altUri = preg_replace("`" . $rule->match . "`", $rule->replace, (string) $request->getUri());
                 $meta   = $meta->withNode($this->dataFactory::namedNode((string) $altUri));
                 if (count($meta) === 0) {
-                    throw new UriNormalizerException("RDF data fetched for $uri resolved to $url does't contain matching subject");
+                    throw new UriNormalizerException("RDF data fetched for $uri resolved to $url does't contain matching subject", uri: $uri);
                 }
             }
 
             $this->setCache('f:' . $uri, 'f:' . $url, $meta);
             return $meta;
         }
-        throw new UriNormalizerException("$uri doesn't match any rule");
+        throw new UriNormalizerException("$uri doesn't match any rule", uri: $uri);
     }
 
     /**
@@ -394,7 +394,7 @@ class UriNormalizer {
             }
         }
         if (!$match) {
-            throw new UriNormalizerException("Failed to fetch data from " . $request->getUri() . " response content type " . $contentType->getFullType() . " doesn't match expected $acceptHeader");
+            throw new UriNormalizerException("Failed to fetch data from " . $request->getUri() . " response content type " . $contentType->getFullType() . " doesn't match expected $acceptHeader", uri: (string) $request->getUri());
         }
 
         return $response;

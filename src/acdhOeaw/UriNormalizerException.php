@@ -32,5 +32,17 @@ namespace acdhOeaw;
  * @author zozlak
  */
 class UriNormalizerException extends \RuntimeException {
-    
+
+    private string | null $uri = null;
+
+    public function __construct(string $message = "", int $code = 0,
+                                ?\Throwable $previous = null,
+                                string | null $uri = null) {
+        parent::__construct($message, $code, $previous);
+        $this->uri = $uri;
+    }
+
+    public function getUri(): string | null {
+        return $this->uri;
+    }
 }

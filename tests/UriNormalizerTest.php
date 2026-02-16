@@ -248,12 +248,14 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             $this->assertTrue(false);
         } catch (UriNormalizerException $e) {
             $this->assertEquals("$valid doesn't match any rule", $e->getMessage());
+            $this->assertEquals($valid, $e->getUri());
         }
         try {
             $this->assertInstanceOf(DatasetNode::class, UriNormalizer::gFetch($valid));
             $this->assertTrue(false);
         } catch (UriNormalizerException $e) {
             $this->assertEquals("$valid doesn't match any rule", $e->getMessage());
+            $this->assertEquals($valid, $e->getUri());
         }
     }
 
@@ -274,7 +276,9 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         try {
             $this->assertInstanceOf(Request::class, $norm->resolve($bad));
         } catch (UriNormalizerException $e) {
-            $this->assertEquals("Failed to fetch data from https://api.ror.org/v2/organizations/123 with status code 404", $e->getMessage());
+            $uri = 'https://api.ror.org/v2/organizations/123';
+            $this->assertEquals("Failed to fetch data from $uri with status code 404", $e->getMessage());
+            $this->assertEquals($uri, $e->getUri());
         }
     }
 
@@ -345,6 +349,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             $this->assertTrue(false);
         } catch (UriNormalizerException $e) {
             $this->assertEquals("$uri doesn't match any rule", $e->getMessage());
+            $this->assertEquals($uri, $e->getUri());
         }
     }
 
@@ -358,7 +363,9 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             UriNormalizer::gResolve($uri);
             $this->assertTrue(false);
         } catch (UriNormalizerException $e) {
-            $this->assertStringStartsWith("Failed to fetch data from http://foo/bar with message cURL error 6: Could not resolve host: foo", $e->getMessage());
+            $uri = 'http://foo/bar';
+            $this->assertStringStartsWith("Failed to fetch data from $uri with message cURL error 6: Could not resolve host: foo", $e->getMessage());
+            $this->assertEquals($uri, $e->getUri());
         }
     }
 
@@ -434,6 +441,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             $this->assertTrue(false);
         } catch (UriNormalizerException $e) {
             $this->assertEquals("Failed to fetch data from $uri with message ", $e->getMessage());
+            $this->assertEquals($uri, $e->getUri());
         }
 
         // simple failure with retry
@@ -451,6 +459,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             $this->assertTrue(false);
         } catch (UriNormalizerException $e) {
             $this->assertEquals("Failed to fetch data from $uri with status code 502", $e->getMessage());
+            $this->assertEquals($uri, $e->getUri());
         }
 
         // retry with no delay
@@ -502,7 +511,8 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $this->assertGreaterThan(0.6, $t1 - $t0);
 
         // failure on no-retry code
-        $retry  = new UriNormalizerRetryConfig(2, 0, UriNormalizerRetryConfig::SCALE_CONST, [429]);
+        $retry  = new UriNormalizerRetryConfig(2, 0, UriNormalizerRetryConfig::SCALE_CONST, [
+            429]);
         $client = $this->createStub(ClientInterface::class);
         $client->method('sendRequest')->willReturn(
             new Response(504), // HEAD
@@ -514,6 +524,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             $this->assertTrue(false);
         } catch (UriNormalizerException $e) {
             $this->assertEquals("Failed to fetch data from $uri with status code 504", $e->getMessage());
+            $this->assertEquals($uri, $e->getUri());
         }
 
         // failure on wrong mime
@@ -525,7 +536,8 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             $n->resolve($uri);
             $this->assertTrue(false);
         } catch (UriNormalizerException $e) {
-            $this->assertEquals("Failed to fetch RDF data from $uri response content type not/set doesn't match expected application/n-triples", $e->getMessage());
+            $this->assertEquals("Failed to fetch data from $uri response content type not/set doesn't match expected application/n-triples", $e->getMessage());
+            $this->assertEquals($uri, $e->getUri());
         }
     }
 }

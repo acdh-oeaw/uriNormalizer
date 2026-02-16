@@ -62,10 +62,10 @@ class UriNormalizerRetryConfig {
                 $this->sleep($attempt);
                 return true;
             }
-            throw new UriNormalizerException("Failed to fetch data from " . $request->getUri() . " with status code $code");
+            throw new UriNormalizerException("Failed to fetch data from " . $request->getUri() . " with status code $code", uri: (string) $request->getUri());
         } elseif ($response instanceof ClientExceptionInterface) {
             if ($attempt > $this->number) {
-                throw new UriNormalizerException("Failed to fetch data from " . $request->getUri() . " with message " . $response->getMessage());
+                throw new UriNormalizerException("Failed to fetch data from " . $request->getUri() . " with message " . $response->getMessage(), uri: (string) $request->getUri());
             }
             $this->sleep($attempt);
             return true;
