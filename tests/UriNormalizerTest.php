@@ -245,6 +245,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         }
         try {
             $this->assertInstanceOf(Request::class, UriNormalizer::gResolve($valid));
+            /** @phpstan-ignore method.impossibleType */
             $this->assertTrue(false);
         } catch (UriNormalizerException $e) {
             $this->assertEquals("$valid doesn't match any rule", $e->getMessage());
@@ -252,6 +253,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         }
         try {
             $this->assertInstanceOf(DatasetNode::class, UriNormalizer::gFetch($valid));
+            /** @phpstan-ignore method.impossibleType */
             $this->assertTrue(false);
         } catch (UriNormalizerException $e) {
             $this->assertEquals("$valid doesn't match any rule", $e->getMessage());
@@ -315,7 +317,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $graph = new Dataset();
         $graph->add(DF::quad(DF::namedNode('foo'), DF::namedNode(self::ID_PROP), DF::namedNode('http://aaa.geonames.org/276136/borj-ej-jaaiyat.html')));
         UriNormalizer::gNormalizeMeta($graph);
-        $this->assertEquals('https://sws.geonames.org/276136/', $graph[0]->getObject()->getValue());
+        $this->assertEquals('https://sws.geonames.org/276136/', $graph->getObjectValue());
     }
 
     public function testFactory(): void {
@@ -335,6 +337,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         UriNormalizer::init();
         try {
             UriNormalizer::gNormalizeMeta(new Dataset());
+            /** @phpstan-ignore method.impossibleType */
             $this->assertTrue(false);
         } catch (UriNormalizerException $e) {
             $this->assertEquals('Id property not defined', $e->getMessage());
@@ -346,6 +349,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $uri = 'http://foo/bar';
         try {
             UriNormalizer::gNormalize($uri);
+            /** @phpstan-ignore method.impossibleType */
             $this->assertTrue(false);
         } catch (UriNormalizerException $e) {
             $this->assertEquals("$uri doesn't match any rule", $e->getMessage());
@@ -361,6 +365,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         UriNormalizer::init($rules);
         try {
             UriNormalizer::gResolve($uri);
+            /** @phpstan-ignore method.impossibleType */
             $this->assertTrue(false);
         } catch (UriNormalizerException $e) {
             $uri = 'http://foo/bar';
@@ -438,6 +443,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $n      = new UriNormalizer(client: $client, retryCfg: $retry);
         try {
             $n->resolve($uri);
+            /** @phpstan-ignore method.impossibleType */
             $this->assertTrue(false);
         } catch (UriNormalizerException $e) {
             $this->assertEquals("Failed to fetch data from $uri with message ", $e->getMessage());
@@ -456,6 +462,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $n      = new UriNormalizer(client: $client, retryCfg: $retry);
         try {
             $n->resolve($uri);
+            /** @phpstan-ignore method.impossibleType */
             $this->assertTrue(false);
         } catch (UriNormalizerException $e) {
             $this->assertEquals("Failed to fetch data from $uri with status code 502", $e->getMessage());
@@ -521,6 +528,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $n      = new UriNormalizer(client: $client, retryCfg: $retry);
         try {
             $n->resolve($uri);
+            /** @phpstan-ignore method.impossibleType */
             $this->assertTrue(false);
         } catch (UriNormalizerException $e) {
             $this->assertEquals("Failed to fetch data from $uri with status code 504", $e->getMessage());
@@ -534,6 +542,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $n      = new UriNormalizer(client: $client, retryCfg: $retry);
         try {
             $n->resolve($uri);
+            /** @phpstan-ignore method.impossibleType */
             $this->assertTrue(false);
         } catch (UriNormalizerException $e) {
             $this->assertEquals("Failed to fetch data from $uri response content type not/set doesn't match expected application/n-triples", $e->getMessage());

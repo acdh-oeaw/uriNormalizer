@@ -141,14 +141,14 @@ class UriNormalizerCache implements CacheInterface {
 
     /**
      * 
-     * @param iterable<string, mixed> $values
+     * @param iterable<string|int, mixed> $values
      * @param null|int|DateInterval $ttl
      * @return bool
      */
     public function setMultiple(iterable $values,
                                 null | int | DateInterval $ttl = null): bool {
         foreach ($values as $key => $value) {
-            $this->set($key, $value, $ttl);
+            $this->set((string) $key, $value, $ttl);
         }
         return true;
     }

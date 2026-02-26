@@ -40,6 +40,7 @@ use zozlak\HttpAccept;
 use rdfInterface\DatasetInterface;
 use rdfInterface\NamedNodeInterface;
 use rdfInterface\BlankNodeInterface;
+use rdfInterface\TermInterface;
 use rdfInterface\DataFactoryInterface;
 use quickRdf\DataFactory as DF;
 use quickRdf\DatasetNode;
@@ -232,6 +233,7 @@ class UriNormalizer {
         foreach ($this->mappings as $rule) {
             $count = 0;
             $norm  = preg_replace('`' . $rule->match . '`', $rule->replace, $uri, 1, $count);
+            /** @phpstan-ignore identical.alwaysFalse */
             if ($norm === null) {
                 throw new UriNormalizerException("Wrong normalization rule: match $rule->match replace $rule->replace");
             }
@@ -371,7 +373,7 @@ class UriNormalizer {
      * The $request parameter is passed by reference so the caller gets access
      * to the finally resolved URL if there were redirects.
      */
-    private function fetchUrlRetry(RequestInterface &$request): ResponseInterface {
+    private function fetchUrlRetry(Request &$request): ResponseInterface {
         $attempt = 0;
         do {
             $attempt++;
@@ -381,6 +383,9 @@ class UriNormalizer {
                 $response = $e;
             }
         } while ($this->retryCfg->retry($response, $attempt, $request));
+        if (!($response instanceof ResponseInterface)) {
+            throw new UriNormalizerException("Failed to fetch data from " . $request->getUri());
+        }
 
         $contentType  = $response->getHeader('Content-Type')[0] ?? 'not/set';
         $contentType  = new HttpAccept($contentType);
@@ -406,7 +411,7 @@ class UriNormalizer {
      * The $request parameter is passed by reference so the caller gets access
      * to the finally resolved URL if there were redirects.
      */
-    private function fetchUrl(RequestInterface &$request): ResponseInterface {
+    private function fetchUrl(Request &$request): ResponseInterface {
         do {
             try {
                 $response = $this->client->sendRequest($request);
@@ -438,7 +443,7 @@ class UriNormalizer {
     }
 
     private function processJsonObject(object $obj,
-                                       BlankNodeInterface | NamedNodeInterface $sbj,
+                                       TermInterface $sbj,
                                        DatasetInterface $dataset): void {
         foreach (get_object_vars($obj) as $k => $v) {
             $prop = DF::namedNode($k);
