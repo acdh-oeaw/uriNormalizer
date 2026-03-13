@@ -47,7 +47,8 @@ class UriNormalizerRetryConfig {
      */
     public function __construct(public int $number = 0, public float $delay = 0,
                                 public string $scale = self::SCALE_CONST,
-                                public array $on = [429, 502, 503, 504]) {
+                                public array $on = [429, 502, 503, 504],
+                                public bool $certVerify = true) {
         
     }
 

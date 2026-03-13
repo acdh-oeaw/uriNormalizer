@@ -199,16 +199,20 @@ class UriNormalizer {
         }
 
         $this->dataFactory = $dataFactory ?? new DF();
+        $this->retryCfg    = $retryCfg ?? new UriNormalizerRetryConfig();
 
         $this->mappings = array_map(fn($x) => UriNormalizerRule::factory($x), $mappings);
         if (!empty($idProp)) {
             $this->idTmpl = new PT(is_string($idProp) ? $this->dataFactory::namedNode($idProp) : $idProp);
         }
-        $this->client = $client ?? ProxyClient::factory();
+
+        $guzzleOpts   = [
+            'verify' => $this->retryCfg->certVerify,
+        ];
+        $this->client = $client ?? ProxyClient::factory($guzzleOpts);
         if ($cache !== null) {
             $this->cache = $cache;
         }
-        $this->retryCfg = $retryCfg ?? new UriNormalizerRetryConfig();
     }
 
     /**
@@ -442,8 +446,7 @@ class UriNormalizer {
         return $response;
     }
 
-    private function processJsonObject(object $obj,
-                                       TermInterface $sbj,
+    private function processJsonObject(object $obj, TermInterface $sbj,
                                        DatasetInterface $dataset): void {
         foreach (get_object_vars($obj) as $k => $v) {
             $prop = DF::namedNode($k);
