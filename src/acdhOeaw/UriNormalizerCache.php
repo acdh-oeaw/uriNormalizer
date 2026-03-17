@@ -128,10 +128,10 @@ class UriNormalizerCache implements CacheInterface {
 
         if (isset($this->pdo)) {
             if (is_int($ttl)) {
-                $ttl = new DateInterval("P{$ttl}S");
+                $ttl = new DateInterval("PT{$ttl}S");
             }
             $ttl     ??= new DateInterval("P1D");
-            $expires = (new DateTimeImmutable())->add($ttl)->format('Y-m-d h:i:s');
+            $expires = (new DateTimeImmutable())->add($ttl)->format('Y-m-d H:i:s');
             $query   = $this->pdo->prepare("INSERT OR REPLACE INTO cache (key, value, expires) VALUES (?, ?, ?)");
             $query->execute([$key, serialize($value), $expires]);
         }
