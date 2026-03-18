@@ -39,6 +39,8 @@ use Psr\SimpleCache\CacheInterface;
  */
 class UriNormalizerCache implements CacheInterface {
 
+    const DEFAULT_TTL = "P1D";
+
     private PDO $pdo;
 
     /**
@@ -46,8 +48,9 @@ class UriNormalizerCache implements CacheInterface {
      * @var array<string, mixed>
      */
     private array $memCache = [];
+    private DateInterval $defaultTtl;
 
-    public function __construct(?string $sqliteFile = null) {
+    public function __construct(?string $sqliteFile = null, int | string | DateInterval $defaultTtl = self::DEFAULT_TTL) {
         if (!empty($sqliteFile)) {
             $init      = !file_exists($sqliteFile);
             $this->pdo = new PDO("sqlite:$sqliteFile");
@@ -58,7 +61,8 @@ class UriNormalizerCache implements CacheInterface {
             ");
             }
             $this->pdo->query("DELETE FROM cache WHERE expires < datetime()");
-        }
+        } 
+        $this->defaultTtl = $this->asDateInterval($defaultTtl);
     }
 
     public function clear(): bool {
@@ -127,10 +131,7 @@ class UriNormalizerCache implements CacheInterface {
         $this->memCache[$key] = $value;
 
         if (isset($this->pdo)) {
-            if (is_int($ttl)) {
-                $ttl = new DateInterval("PT{$ttl}S");
-            }
-            $ttl     ??= new DateInterval("P1D");
+            $ttl     = $this->asDateInterval($ttl ?? $this->defaultTtl);
             $expires = (new DateTimeImmutable())->add($ttl)->format('Y-m-d H:i:s');
             $query   = $this->pdo->prepare("INSERT OR REPLACE INTO cache (key, value, expires) VALUES (?, ?, ?)");
             $query->execute([$key, serialize($value), $expires]);
@@ -151,5 +152,15 @@ class UriNormalizerCache implements CacheInterface {
             $this->set((string) $key, $value, $ttl);
         }
         return true;
+    }
+
+    private function asDateInterval(int | string | DateInterval $value): DateInterval{
+        if (is_int($value)) {
+            $value = "PT{$value}S";
+        }
+        if(is_string($value)){
+            $value = new DateInterval($value);
+        }
+        return $value;
     }
 }

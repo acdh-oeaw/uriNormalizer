@@ -108,7 +108,8 @@ $normalizer->fetch('https://my.own.namespace/123/foo');
 ###
 # Use cache
 ###
-$cache = new \acdhOeaw\UriNormalizerCache('db.sqlite');
+// use default TTL of 600 seconds
+$cache = new \acdhOeaw\UriNormalizerCache('db.sqlite', 600);
 $normalizer = new \acdhOeaw\UriNormalizer(cache: $cache);
 // first retrieval should take 0.1-1 second depending on your connection speed
 $t = microtime(true);
