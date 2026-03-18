@@ -24,7 +24,7 @@
  * THE SOFTWARE.
  */
 
-namespace acdhOeaw;
+namespace acdhOeaw\uriNormalizer;
 
 /**
  * Description of IndexerTest

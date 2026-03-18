@@ -1,7 +1,7 @@
 # URI Normalizer
 
 [![Latest Stable Version](https://poser.pugx.org/acdh-oeaw/uri-normalizer/v/stable)](https://packagist.org/packages/acdh-oeaw/uri-normalizer)
-![Build status](https://github.com/acdh-oeaw/uriNormalizer/workflows/phpunit/badge.svg?branch=master)
+[![Build Status](https://github.com/acdh-oeaw/uriNormalizer/actions/workflows/test.yml/badge.svg)](https://github.com/acdh-oeaw/uriNormalizer/actions/workflows/test.yml)
 [![Coverage Status](https://coveralls.io/repos/github/acdh-oeaw/uriNormalizer/badge.svg?branch=master)](https://coveralls.io/github/acdh-oeaw/uriNormalizer?branch=master)
 [![License](https://poser.pugx.org/acdh-oeaw/uri-normalizer/license)](https://packagist.org/packages/acdh-oeaw/uri-normalizer)
 
@@ -54,7 +54,7 @@ composer require acdh-oeaw/uri-normalizer
 ###
 # Initialization
 ###
-$normalizer = new \acdhOeaw\UriNormalizer();
+$normalizer = new \acdhOeaw\uriNormalizer\UriNormalizer();
 
 ###
 # string URL normalization
@@ -63,22 +63,11 @@ $normalizer = new \acdhOeaw\UriNormalizer();
 echo $normalizer->normalize('http://geonames.org/2761369/vienna.html');
 
 ###
-# EasyRdf resource property normalization
-###
-$property = 'https://some.id/property';
-$graph    = new EasyRdf\Graph();
-$resource = $graph->resource('.');
-$resource->addResource($property, 'http://aaa.geonames.org/276136/borj-ej-jaaiyat.html');
-$normalizer->normalizeMeta($resource, $property);
-// returns 'https://sws.geonames.org/276136/'
-echo (string) $resource->getResource($property);
-
-###
 # Retrieve parsed/raw RDF metadata from URI/URL
 ###
 // print parsed RDF metadata retrieved from the geonames
 $metadata = $normalizer->fetch('http://geonames.org/2761369/vienna.html');
-echo $metadata->dump('text') . "\n";
+echo $metadata;
 
 // get a PSR-7 request fetching the RDF metadata for a given geonames URL
 $request = $normalizer->resolve('http://geonames.org/2761369/vienna.html');
@@ -97,8 +86,8 @@ $rules = [
   ],
 ];
 $client = new \GuzzleHttp\Client(['auth' => ['login', 'password']]);
-$cache  = false;
-$normalizer = new \acdhOeaw\UriNormalizer($rules, '', $client, $cache);
+$cache  = null;
+$normalizer = new \acdhOeaw\uriNormalizer\UriNormalizer($rules, '', $client, $cache);
 // returns 'https://own.namespace/123'
 echo $normalizer->normalize('https://my.own.namespace/123/foo');
 // obviously won't work but if the https://own.namespace would exist,
@@ -109,18 +98,19 @@ $normalizer->fetch('https://my.own.namespace/123/foo');
 # Use cache
 ###
 // use default TTL of 600 seconds
-$cache = new \acdhOeaw\UriNormalizerCache('db.sqlite', 600);
-$normalizer = new \acdhOeaw\UriNormalizer(cache: $cache);
+// if cache file is not specified, an in-memory cache is created
+$cache = new \acdhOeaw\uriNormalizer\UriNormalizerCache('db.sqlite', 600);
+$normalizer = new \acdhOeaw\uriNormalizer\UriNormalizer(cache: $cache);
 // first retrieval should take 0.1-1 second depending on your connection speed
 $t = microtime(true);
 $metadata = $normalizer->fetch('http://geonames.org/2761369/vienna.html');
 $t = (microtime(true) - $t);
-echo $metadata->dump('text') . "\ntime: $t s\n";
+echo $metadata . "\ntime: $t s\n";
 // second retrieval should be very quick thanks to in-memory cache
 $t = microtime(true);
 $metadata = $normalizer->fetch('http://geonames.org/2761369/vienna.html');
 $t = (microtime(true) - $t);
-echo $metadata->dump('text') . "\ntime: $t s\n";
+echo $metadata . "\ntime: $t s\n";
 // a completely separate UriNormalizer instance still benefits from the persistent
 // sqlite cache
 $cache2 = new \acdhOeaw\UriNormalizerCache('db.sqlite');
@@ -128,30 +118,23 @@ $normalizer2 = new \acdhOeaw\UriNormalizer(cache: $cache);
 $t = microtime(true);
 $metadata = $normalizer2->fetch('http://geonames.org/2761369/vienna.html');
 $t = (microtime(true) - $t);
-echo $metadata->dump('text') . "\ntime: $t s\n";
+echo $metadata . "\ntime: $t s\n";
 
 ###
 # As a global singleton
 ###
 // initialization is done with init() instead of a constructor
 // the init() takes same parameters as the constructor
-\acdhOeaw\UriNormalizer::init();
+\acdhOeaw\uriNormalizer\UriNormalizer::init();
 // all other methods (gNormalize(), gFetch() and gResolve()) also work in 
 // the same way and take same parameters as their non-static counterparts
+//
 // returns 'https://sws.geonames.org/2761369/'
-echo \acdhOeaw\UriNormalizer::gNormalize('http://geonames.org/2761369/vienna.html');
-// fetch and cache parsed RDF metadata
-echo \acdhOeaw\UriNormalizer::gFetch('http://geonames.org/2761369/vienna.html')->dump('text');
-// fetch and cache raw RDF metadata
-echo \acdhOeaw\UriNormalizer::gResolve('http://geonames.org/2761369/vienna.html')->getBody();
-// normalize EasyRdf Resource property
-$property = 'https://some.id/property';
-$graph    = new EasyRdf\Graph();
-$resource = $graph->resource('.');
-$resource->addResource($property, 'http://aaa.geonames.org/276136/borj-ej-jaaiyat.html');
-\acdhOeaw\UriNormalizer::gNormalizeMeta($resource, $property);
-// returns 'https://sws.geonames.org/276136/'
-echo (string) $resource->getResource($property);
+echo \acdhOeaw\uriNormalizer\UriNormalizer::gNormalize('http://geonames.org/2761369/vienna.html');
+// fetch and parse RDF metadata
+echo \acdhOeaw\uriNormalizer\UriNormalizer::gFetch('http://geonames.org/2761369/vienna.html');
+// just resolve
+echo \acdhOeaw\uriNormalizer\UriNormalizer::gResolve('http://geonames.org/2761369/vienna.html')->getUri();
 
 ###
 # Configure 3 retry attempts on HTTP 429 with a delay increasing with every retry (1.5, 3 and 4.5 seconds)
@@ -162,6 +145,6 @@ $retryCfg = new \acdhOeaw\UriNormalizerRetryConfig(
     scale: \acdhOeaw\UriNormalizerRetryConfig::SCALE_MULTI,
     on: [429],
 );
-$normalizer = new \acdhOeaw\UriNormalizer(retryCfg: $retryCfg);
-$normalizer->resolve('http://geonames.org/2761369/vienna.html');
+$normalizer = new \acdhOeaw\uriNormalizer\UriNormalizer(retryCfg: $retryCfg);
+echo $normalizer->resolve('http://geonames.org/2761369/vienna.html')->getUri();
 ```

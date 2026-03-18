@@ -24,7 +24,7 @@
  * THE SOFTWARE.
  */
 
-namespace acdhOeaw;
+namespace acdhOeaw\uriNormalizer;
 
 use DateTimeImmutable;
 use DateInterval;
@@ -40,6 +40,16 @@ use Psr\SimpleCache\CacheInterface;
 class UriNormalizerCache implements CacheInterface {
 
     const DEFAULT_TTL = "P1D";
+
+    static public function asDateInterval(int | string | DateInterval $value): DateInterval{
+        if (is_int($value)) {
+            $value = "PT{$value}S";
+        }
+        if(is_string($value)){
+            $value = new DateInterval($value);
+        }
+        return $value;
+    }
 
     private PDO $pdo;
 
@@ -62,7 +72,7 @@ class UriNormalizerCache implements CacheInterface {
             }
             $this->pdo->query("DELETE FROM cache WHERE expires < datetime()");
         } 
-        $this->defaultTtl = $this->asDateInterval($defaultTtl);
+        $this->defaultTtl = self::asDateInterval($defaultTtl);
     }
 
     public function clear(): bool {
@@ -131,7 +141,7 @@ class UriNormalizerCache implements CacheInterface {
         $this->memCache[$key] = $value;
 
         if (isset($this->pdo)) {
-            $ttl     = $this->asDateInterval($ttl ?? $this->defaultTtl);
+            $ttl     = self::asDateInterval($ttl ?? $this->defaultTtl);
             $expires = (new DateTimeImmutable())->add($ttl)->format('Y-m-d H:i:s');
             $query   = $this->pdo->prepare("INSERT OR REPLACE INTO cache (key, value, expires) VALUES (?, ?, ?)");
             $query->execute([$key, serialize($value), $expires]);
@@ -154,13 +164,4 @@ class UriNormalizerCache implements CacheInterface {
         return true;
     }
 
-    private function asDateInterval(int | string | DateInterval $value): DateInterval{
-        if (is_int($value)) {
-            $value = "PT{$value}S";
-        }
-        if(is_string($value)){
-            $value = new DateInterval($value);
-        }
-        return $value;
-    }
 }

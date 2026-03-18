@@ -24,7 +24,7 @@
  * THE SOFTWARE.
  */
 
-namespace acdhOeaw;
+namespace acdhOeaw\uriNormalizer;
 
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Client\ClientExceptionInterface;
@@ -46,6 +46,7 @@ use quickRdf\DataFactory as DF;
 use quickRdf\DatasetNode;
 use termTemplates\PredicateTemplate as PT;
 use quickRdfIo\Util as RdfIoUtil;
+use acdhOeaw\UriNormRules;
 
 /**
  * A simply utility class normalizing the URIs
@@ -82,7 +83,7 @@ class UriNormalizer {
                                 ?ClientInterface $client = null,
                                 ?CacheInterface $cache = null,
                                 ?DataFactoryInterface $dataFactory = null,
-                                ?UriNormalizerRetryConfig $retryCfg = null): void {
+                                ?UriNormalizerResolveConfig $retryCfg = null): void {
         self::$obj = new UriNormalizer($mappings, $idProp, $client, $cache, $dataFactory, $retryCfg);
     }
 
@@ -169,7 +170,7 @@ class UriNormalizer {
     private ClientInterface $client;
     private CacheInterface $cache;
     private DataFactoryInterface $dataFactory;
-    private UriNormalizerRetryConfig $retryCfg;
+    private UriNormalizerResolveConfig $retryCfg;
 
     /**
      * @param array<UriNormalizerRule|array<string, string>|\stdClass>|null $mappings  
@@ -193,13 +194,13 @@ class UriNormalizer {
                                 ?ClientInterface $client = null,
                                 ?CacheInterface $cache = null,
                                 ?DataFactoryInterface $dataFactory = null,
-                                ?UriNormalizerRetryConfig $retryCfg = null) {
+                                ?UriNormalizerResolveConfig $retryCfg = null) {
         if ($mappings === null) {
             $mappings = UriNormRules::getRules();
         }
 
         $this->dataFactory = $dataFactory ?? new DF();
-        $this->retryCfg    = $retryCfg ?? new UriNormalizerRetryConfig();
+        $this->retryCfg    = $retryCfg ?? new UriNormalizerResolveConfig();
 
         $this->mappings = array_map(fn($x) => UriNormalizerRule::factory($x), $mappings);
         if (!empty($idProp)) {

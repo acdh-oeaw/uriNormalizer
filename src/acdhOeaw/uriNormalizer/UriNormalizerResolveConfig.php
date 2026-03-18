@@ -24,22 +24,25 @@
  * THE SOFTWARE.
  */
 
-namespace acdhOeaw;
+namespace acdhOeaw\uriNormalizer;
 
+use DateInterval;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Client\ClientExceptionInterface;
 
 /**
- * Container for URL resolution retry settings
+ * Container for URL resolution settings
  *
  * @author zozlak
  */
-class UriNormalizerRetryConfig {
+class UriNormalizerResolveConfig {
 
     const SCALE_CONST = 'const';
     const SCALE_MULTI = 'multi';
     const SCALE_POWER = 'power';
+
+    public DateInterval $ttl;
 
     /**
      * 
@@ -48,8 +51,8 @@ class UriNormalizerRetryConfig {
     public function __construct(public int $number = 0, public float $delay = 0,
                                 public string $scale = self::SCALE_CONST,
                                 public array $on = [429, 502, 503, 504],
-                                public bool $certVerify = true) {
-        
+                                public bool $certVerify = true, int|string|DateInterval $ttl = UriNormalizerCache::DEFAULT_TTL) {
+        $this->ttl = UriNormalizerCache::asDateInterval($ttl);    
     }
 
     public function retry(ResponseInterface | ClientExceptionInterface $response,

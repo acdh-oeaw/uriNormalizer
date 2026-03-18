@@ -24,7 +24,7 @@
  * THE SOFTWARE.
  */
 
-namespace acdhOeaw;
+namespace acdhOeaw\uriNormalizer;
 
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Client\ClientExceptionInterface;
@@ -35,7 +35,7 @@ use GuzzleHttp\Psr7\Utils;
 use quickRdf\Dataset;
 use quickRdf\DatasetNode;
 use quickRdf\DataFactory as DF;
-use acdhOeaw\UriNormalizerException;
+use acdhOeaw\UriNormRules;
 
 /**
  * Description of IndexerTest
@@ -437,7 +437,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $uri     = 'https://id.acdh.oeaw.ac.at/foo';
 
         // simple failure
-        $retry  = new UriNormalizerRetryConfig();
+        $retry  = new UriNormalizerResolveConfig();
         $client = $this->createStub(ClientInterface::class);
         $client->method('sendRequest')->willThrowException($this->createStub(ClientExceptionInterface::class));
         $n      = new UriNormalizer(client: $client, retryCfg: $retry);
@@ -451,7 +451,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         }
 
         // simple failure with retry
-        $retry  = new UriNormalizerRetryConfig(2);
+        $retry  = new UriNormalizerResolveConfig(2);
         $client = $this->createStub(ClientInterface::class);
         $client->method('sendRequest')->willReturn(
             new Response(502), // HEAD
@@ -470,7 +470,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         }
 
         // retry with no delay
-        $retry    = new UriNormalizerRetryConfig(1);
+        $retry    = new UriNormalizerResolveConfig(1);
         $client   = $this->createStub(ClientInterface::class);
         $client->method('sendRequest')->willReturn(
             new Response(502), // HEAD
@@ -485,7 +485,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $this->assertLessThan(0.001, $t1 - $t0);
 
         // retry with delay
-        $retry    = new UriNormalizerRetryConfig(1, 0.5);
+        $retry    = new UriNormalizerResolveConfig(1, 0.5);
         $client   = $this->createStub(ClientInterface::class);
         $client->method('sendRequest')->willReturn(
             new Response(502), // HEAD
@@ -501,7 +501,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $this->assertGreaterThan(0.5, $t1 - $t0);
 
         // multiple retries with delay and HEAD failure
-        $retry    = new UriNormalizerRetryConfig(2, 0.2, UriNormalizerRetryConfig::SCALE_MULTI);
+        $retry    = new UriNormalizerResolveConfig(2, 0.2, UriNormalizerResolveConfig::SCALE_MULTI);
         $client   = $this->createStub(ClientInterface::class);
         $client->method('sendRequest')->willReturn(
             new Response(504), // HEAD
@@ -518,7 +518,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $this->assertGreaterThan(0.6, $t1 - $t0);
 
         // failure on no-retry code
-        $retry  = new UriNormalizerRetryConfig(2, 0, UriNormalizerRetryConfig::SCALE_CONST, [
+        $retry  = new UriNormalizerResolveConfig(2, 0, UriNormalizerResolveConfig::SCALE_CONST, [
             429]);
         $client = $this->createStub(ClientInterface::class);
         $client->method('sendRequest')->willReturn(
@@ -536,7 +536,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         }
 
         // failure on wrong mime
-        $retry  = new UriNormalizerRetryConfig(2, 0, UriNormalizerRetryConfig::SCALE_CONST);
+        $retry  = new UriNormalizerResolveConfig(2, 0, UriNormalizerResolveConfig::SCALE_CONST);
         $client = $this->createStub(ClientInterface::class);
         $client->method('sendRequest')->willReturn(new Response(200));
         $n      = new UriNormalizer(client: $client, retryCfg: $retry);
