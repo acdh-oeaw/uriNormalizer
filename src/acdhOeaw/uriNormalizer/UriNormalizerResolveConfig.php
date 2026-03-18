@@ -51,8 +51,9 @@ class UriNormalizerResolveConfig {
     public function __construct(public int $number = 0, public float $delay = 0,
                                 public string $scale = self::SCALE_CONST,
                                 public array $on = [429, 502, 503, 504],
-                                public bool $certVerify = true, int|string|DateInterval $ttl = UriNormalizerCache::DEFAULT_TTL) {
-        $this->ttl = UriNormalizerCache::asDateInterval($ttl);    
+                                public bool $certVerify = true,
+                                int | string | DateInterval $ttl = UriNormalizerCache::DEFAULT_TTL) {
+        $this->ttl = UriNormalizerCache::asDateInterval($ttl);
     }
 
     public function retry(ResponseInterface | ClientExceptionInterface $response,

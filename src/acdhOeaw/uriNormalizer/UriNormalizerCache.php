@@ -41,11 +41,11 @@ class UriNormalizerCache implements CacheInterface {
 
     const DEFAULT_TTL = "P1D";
 
-    static public function asDateInterval(int | string | DateInterval $value): DateInterval{
+    static public function asDateInterval(int | string | DateInterval $value): DateInterval {
         if (is_int($value)) {
             $value = "PT{$value}S";
         }
-        if(is_string($value)){
+        if (is_string($value)) {
             $value = new DateInterval($value);
         }
         return $value;
@@ -60,7 +60,8 @@ class UriNormalizerCache implements CacheInterface {
     private array $memCache = [];
     private DateInterval $defaultTtl;
 
-    public function __construct(?string $sqliteFile = null, int | string | DateInterval $defaultTtl = self::DEFAULT_TTL) {
+    public function __construct(?string $sqliteFile = null,
+                                int | string | DateInterval $defaultTtl = self::DEFAULT_TTL) {
         if (!empty($sqliteFile)) {
             $init      = !file_exists($sqliteFile);
             $this->pdo = new PDO("sqlite:$sqliteFile");
@@ -71,7 +72,7 @@ class UriNormalizerCache implements CacheInterface {
             ");
             }
             $this->pdo->query("DELETE FROM cache WHERE expires < datetime()");
-        } 
+        }
         $this->defaultTtl = self::asDateInterval($defaultTtl);
     }
 
@@ -163,5 +164,4 @@ class UriNormalizerCache implements CacheInterface {
         }
         return true;
     }
-
 }
