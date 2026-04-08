@@ -61,7 +61,7 @@ class UriNormalizerCache implements CacheInterface {
     private DateInterval $defaultTtl;
 
     public function __construct(?string $sqliteFile = null,
-                                int | string | DateInterval $defaultTtl = self::DEFAULT_TTL) {
+                                int | string | DateInterval | null $defaultTtl = null) {
         if (!empty($sqliteFile)) {
             $init      = !file_exists($sqliteFile);
             $this->pdo = new PDO("sqlite:$sqliteFile");
@@ -73,7 +73,7 @@ class UriNormalizerCache implements CacheInterface {
             }
             $this->pdo->query("DELETE FROM cache WHERE expires < datetime()");
         }
-        $this->defaultTtl = self::asDateInterval($defaultTtl);
+        $this->defaultTtl = self::asDateInterval($defaultTtl ?? self::DEFAULT_TTL);
     }
 
     public function clear(): bool {
