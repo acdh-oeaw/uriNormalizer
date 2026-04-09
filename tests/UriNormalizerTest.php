@@ -137,6 +137,10 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $this->assertInstanceOf(DatasetNode::class, UriNormalizer::gFetch($valid));
     }
 
+    /**
+     * 
+     * @depends testInit
+     */
     public function testGnd(): void {
         $norm  = new UriNormalizer();
         $valid = 'https://d-nb.info/gnd/4491366-7';
@@ -176,6 +180,10 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $this->assertInstanceOf(DatasetNode::class, UriNormalizer::gFetch($valid));
     }
 
+    /**
+     * 
+     * @depends testInit
+     */
     public function testOrcid(): void {
         $norm  = new UriNormalizer();
         $valid = 'https://orcid.org/0000-0002-5274-8278';
@@ -309,6 +317,22 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         }
     }
 
+    /**
+     * 
+     * @depends testInit
+     */
+    public function testRism(): void {
+        $norm  = new UriNormalizer();
+        $valid = 'https://rism.online/institutions/30000388';
+        $bad   = [
+            'http://rism.online/institutions/30000388',
+        ];
+        foreach ($bad as $i) {
+            $this->assertEquals($valid, $norm->normalize($i));
+        }
+        $this->assertInstanceOf(Request::class, $norm->resolve($valid));
+        $this->assertInstanceOf(DatasetNode::class, $norm->fetch($valid));
+    }
     /**
      * 
      * @depends testInit
