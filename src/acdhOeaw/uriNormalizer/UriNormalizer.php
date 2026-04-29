@@ -36,7 +36,7 @@ use GuzzleHttp\Psr7\Uri;
 use GuzzleHttp\Psr7\UriResolver;
 use zozlak\RdfConstants as RDF;
 use zozlak\ProxyClient;
-use zozlak\HttpAccept;
+use zozlak\httpAccept\Format;
 use rdfInterface\DatasetInterface;
 use rdfInterface\NamedNodeInterface;
 use rdfInterface\BlankNodeInterface;
@@ -392,10 +392,9 @@ class UriNormalizer {
             throw new UriNormalizerException("Failed to fetch data from " . $request->getUri());
         }
 
-        $contentType  = $response->getHeader('Content-Type')[0] ?? 'not/set';
-        $contentType  = new HttpAccept($contentType);
+        $contentType  = Format::fromString($response->getHeader('Content-Type')[0] ?? 'not/set');
         $acceptHeader = $request->getHeader('Accept')[0] ?? '*/*';
-        $accept       = array_map(fn($x) => new HttpAccept($x), explode(',', $acceptHeader));
+        $accept       = array_map(fn($x) => Format::fromString($x), explode(',', $acceptHeader));
         $match        = false;
         foreach ($accept as $i) {
             if ($i->matches($contentType)) {
@@ -404,7 +403,7 @@ class UriNormalizer {
             }
         }
         if (!$match) {
-            throw new UriNormalizerException("Failed to fetch data from " . $request->getUri() . " response content type " . $contentType->getFullType() . " doesn't match expected $acceptHeader", uri: (string) $request->getUri());
+            throw new UriNormalizerException("Failed to fetch data from " . $request->getUri() . " response content type " . $contentType->getFullType(). " doesn't match expected $acceptHeader", uri: (string) $request->getUri());
         }
 
         return $response;
