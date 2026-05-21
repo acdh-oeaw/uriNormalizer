@@ -333,6 +333,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $this->assertInstanceOf(Request::class, $norm->resolve($valid));
         $this->assertInstanceOf(DatasetNode::class, $norm->fetch($valid));
     }
+
     /**
      * 
      * @depends testInit
@@ -572,5 +573,57 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             $this->assertEquals("Failed to fetch data from $uri response content type not/set doesn't match expected application/n-triples", $e->getMessage());
             $this->assertEquals($uri, $e->getUri());
         }
+    }
+
+    /**
+     * Test's if HTTP 404 responses are cached
+     * @return void
+     */
+    public function testCache404(): void {
+        $cache = $this->initCache();
+        $url   = 'https://id.acdh.oeaw.ac.at/no-such-id';
+        $n     = new UriNormalizer(cache: $cache);
+
+        $r1 = $r2 = null;
+        $t0 = microtime(true);
+        try {
+            $n->fetch($url);
+            $this->assertTrue(false);
+        } catch (UriNormalizerException $e) {
+            $r1 = $e;
+        }
+        $t1 = microtime(true);
+        try {
+            $r2 = $n->fetch($url);
+            $this->assertTrue(false);
+        } catch (UriNormalizerException) {
+            $r2 = $e;
+        }
+        $t2 = microtime(true);
+        $this->assertEquals($r1, $r2);
+        $this->assertInstanceOf(UriNormalizerException::class, $r1);
+        $this->assertEquals("Failed to fetch data from $url with status code 404", $r1->getMessage());
+        $this->assertLessThan(($t1 - $t0) / 10, $t2 - $t1);
+        
+        $r1 = $r2 = null;
+        $t0 = microtime(true);
+        try {
+            $n->resolve($url);
+            $this->assertTrue(false);
+        } catch (UriNormalizerException $e) {
+            $r1 = $e;
+        }
+        $t1 = microtime(true);
+        try {
+            $r2 = $n->resolve($url);
+            $this->assertTrue(false);
+        } catch (UriNormalizerException) {
+            $r2 = $e;
+        }
+        $t2 = microtime(true);
+        $this->assertEquals($r1, $r2);
+        $this->assertInstanceOf(UriNormalizerException::class, $r1);
+        $this->assertEquals("Failed to fetch data from $url with status code 404", $r1->getMessage());
+        $this->assertLessThan(($t1 - $t0) / 10, $t2 - $t1);
     }
 }

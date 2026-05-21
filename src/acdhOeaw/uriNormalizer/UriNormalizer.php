@@ -26,6 +26,7 @@
 
 namespace acdhOeaw\uriNormalizer;
 
+use Exception;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -305,7 +306,9 @@ class UriNormalizer {
         $uri      = (string) $uri;
         $cacheKey = 'r:' . $uri;
         $result   = isset($this->cache) ? $this->cache->get($cacheKey, null) : null;
-        if ($result) {
+        if ($result instanceof Exception) {
+            throw $result;
+        } elseif ($result) {
             return $result;
         }
         foreach ($this->mappings as $rule) {
@@ -316,9 +319,14 @@ class UriNormalizer {
             }
 
             $request = new Request('HEAD', $url, ['Accept' => $rule->format]);
-            $this->fetchUrlRetry($request);
-            $this->setCache('r:' . $uri, 'r:' . $request->getUri(), $request);
-            return $request;
+            try {
+                $this->fetchUrlRetry($request);
+                $this->setCache('r:' . $uri, 'r:' . $request->getUri(), $request);
+                return $request;
+            } catch (NotFoundException $e) {
+                $this->setCache('r:' . $uri, 'r:' . $request->getUri(), $e);
+                throw $e;
+            }
         }
         throw new UriNormalizerException("$uri doesn't match any rule", uri: $uri);
     }
@@ -336,7 +344,9 @@ class UriNormalizer {
         $uri      = (string) $uri;
         $cacheKey = 'f:' . $uri;
         $result   = isset($this->cache) ? $this->cache->get($cacheKey, null) : null;
-        if ($result) {
+        if ($result instanceof Exception) {
+            throw $result;
+        } elseif ($result) {
             return $result;
         }
         foreach ($this->mappings as $rule) {
@@ -346,28 +356,33 @@ class UriNormalizer {
                 continue;
             }
 
-            $request  = new Request('GET', $url, ['Accept' => $rule->format]);
-            $response = $this->fetchUrlRetry($request);
-            $meta     = new DatasetNode($this->dataFactory::namedNode($uri));
-            if ($rule->format !== self::FORMAT_JSON) {
-                $meta->add(RdfIoUtil::parse($response, $this->dataFactory, $rule->format));
-            } else {
-                $json  = json_decode((string) $response->getBody());
-                $this->processJsonObject($json, $meta->getNode(), $meta);
-                $class = $rule->class ?? '@type';
-                $class = isset($json->$class) ? $json->$class : 'unknownClass';
-                $meta->add(DF::quadNoSubject(DF::namedNode(RDF::RDF_TYPE), DF::namedNode($class)));
-            }
-            if (count($meta) === 0) {
-                $altUri = preg_replace("`" . $rule->match . "`", $rule->replace, (string) $request->getUri());
-                $meta   = $meta->withNode($this->dataFactory::namedNode((string) $altUri));
-                if (count($meta) === 0) {
-                    throw new UriNormalizerException("RDF data fetched for $uri resolved to $url does't contain matching subject", uri: $uri);
+            $request = new Request('GET', $url, ['Accept' => $rule->format]);
+            try {
+                $response = $this->fetchUrlRetry($request);
+                $meta     = new DatasetNode($this->dataFactory::namedNode($uri));
+                if ($rule->format !== self::FORMAT_JSON) {
+                    $meta->add(RdfIoUtil::parse($response, $this->dataFactory, $rule->format));
+                } else {
+                    $json  = json_decode((string) $response->getBody());
+                    $this->processJsonObject($json, $meta->getNode(), $meta);
+                    $class = $rule->class ?? '@type';
+                    $class = isset($json->$class) ? $json->$class : 'unknownClass';
+                    $meta->add(DF::quadNoSubject(DF::namedNode(RDF::RDF_TYPE), DF::namedNode($class)));
                 }
-            }
+                if (count($meta) === 0) {
+                    $altUri = preg_replace("`" . $rule->match . "`", $rule->replace, (string) $request->getUri());
+                    $meta   = $meta->withNode($this->dataFactory::namedNode((string) $altUri));
+                    if (count($meta) === 0) {
+                        throw new UriNormalizerException("RDF data fetched for $uri resolved to $url does't contain matching subject", uri: $uri);
+                    }
+                }
 
-            $this->setCache('f:' . $uri, 'f:' . $url, $meta);
-            return $meta;
+                $this->setCache('f:' . $uri, 'f:' . $url, $meta);
+                return $meta;
+            } catch (NotFoundException $e) {
+                $this->setCache('f:' . $uri, 'f:' . $request->getUri(), $e);
+                throw $e;
+            }
         }
         throw new UriNormalizerException("$uri doesn't match any rule", uri: $uri);
     }
@@ -403,7 +418,7 @@ class UriNormalizer {
             }
         }
         if (!$match) {
-            throw new UriNormalizerException("Failed to fetch data from " . $request->getUri() . " response content type " . $contentType->getFullType(). " doesn't match expected $acceptHeader", uri: (string) $request->getUri());
+            throw new UriNormalizerException("Failed to fetch data from " . $request->getUri() . " response content type " . $contentType->getFullType() . " doesn't match expected $acceptHeader", uri: (string) $request->getUri());
         }
 
         return $response;

@@ -62,12 +62,14 @@ class UriNormalizerResolveConfig {
             $code = $response->getStatusCode();
             if (in_array($code, [200, 201, 204])) {
                 return false;
+            }elseif ($code === 404){
+                throw new NotFoundException(uri:(string) $request->getUri());
             }
             if (in_array($code, $this->on) && $attempt <= $this->number) {
                 $this->sleep($attempt);
                 return true;
             }
-            throw new UriNormalizerException("Failed to fetch data from " . $request->getUri() . " with status code $code", uri: (string) $request->getUri());
+            throw new UriNormalizerException("Failed to fetch data from " . $request->getUri() . " with status code $code", $code, uri: (string) $request->getUri());
         } elseif ($response instanceof ClientExceptionInterface) {
             if ($attempt > $this->number) {
                 throw new UriNormalizerException("Failed to fetch data from " . $request->getUri() . " with message " . $response->getMessage(), uri: (string) $request->getUri());
