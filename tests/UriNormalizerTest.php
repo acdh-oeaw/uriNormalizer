@@ -588,6 +588,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $t0 = microtime(true);
         try {
             $n->fetch($url);
+            /** @phpstan-ignore method.impossibleType */
             $this->assertTrue(false);
         } catch (UriNormalizerException $e) {
             $r1 = $e;
@@ -595,8 +596,9 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $t1 = microtime(true);
         try {
             $r2 = $n->fetch($url);
+            /** @phpstan-ignore method.impossibleType */
             $this->assertTrue(false);
-        } catch (UriNormalizerException) {
+        } catch (UriNormalizerException $e) {
             $r2 = $e;
         }
         $t2 = microtime(true);
@@ -609,6 +611,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $t0 = microtime(true);
         try {
             $n->resolve($url);
+            /** @phpstan-ignore method.impossibleType */
             $this->assertTrue(false);
         } catch (UriNormalizerException $e) {
             $r1 = $e;
@@ -616,8 +619,9 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $t1 = microtime(true);
         try {
             $r2 = $n->resolve($url);
+            /** @phpstan-ignore method.impossibleType */
             $this->assertTrue(false);
-        } catch (UriNormalizerException) {
+        } catch (UriNormalizerException $e) {
             $r2 = $e;
         }
         $t2 = microtime(true);
