@@ -57,6 +57,7 @@ use acdhOeaw\UriNormRules;
 class UriNormalizer {
 
     const FORMAT_JSON = 'application/json';
+    const USER_AGENT  = 'acdh-uri-normalizer/4.2 (https://github.com/acdh-oeaw/uriNormalizer; mzoltak@oeaw.ac.at)';
 
     static private self $obj;
 
@@ -394,6 +395,9 @@ class UriNormalizer {
      * to the finally resolved URL if there were redirects.
      */
     private function fetchUrlRetry(Request &$request): ResponseInterface {
+        if (count($request->getHeader('user-agent')) === 0) {
+            $request = $request->withHeader('user-agent', self::USER_AGENT);
+        }
         $attempt = 0;
         do {
             $attempt++;
