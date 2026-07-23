@@ -148,6 +148,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
             'http://d-nb.info/gnd/4491366-7',
             'https://d-nb.info/gnd/4491366-7',
             'http://aaa.d-nb.info/gnd/4491366-7',
+            'https://explore.gnd.network/gnd/4491366-7',
         ];
         foreach ($bad as $i) {
             $this->assertEquals($valid, $norm->normalize($i));
@@ -332,6 +333,12 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         }
         $this->assertInstanceOf(Request::class, $norm->resolve($valid));
         $this->assertInstanceOf(DatasetNode::class, $norm->fetch($valid));
+    }
+
+    public function testResolver(): void {
+        $norm    = new UriNormalizer(UriNormalizer::RULES_RESOLVER);
+        $request = $norm->resolve('https://wikipedia.org');
+        $this->assertEquals('https://www.wikipedia.org/', (string) $request->getUri());
     }
 
     /**
@@ -606,7 +613,7 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $this->assertInstanceOf(UriNormalizerException::class, $r1);
         $this->assertEquals("Failed to fetch data from $url with status code 404", $r1->getMessage());
         $this->assertLessThan(($t1 - $t0) / 10, $t2 - $t1);
-        
+
         $r1 = $r2 = null;
         $t0 = microtime(true);
         try {

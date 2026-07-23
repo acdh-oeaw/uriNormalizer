@@ -56,8 +56,14 @@ use acdhOeaw\UriNormRules;
  */
 class UriNormalizer {
 
-    const FORMAT_JSON = 'application/json';
-    const USER_AGENT  = 'acdh-uri-normalizer/4.2 (https://github.com/acdh-oeaw/uriNormalizer; mzoltak@oeaw.ac.at)';
+    const FORMAT_JSON    = 'application/json';
+    const USER_AGENT     = 'acdh-uri-normalizer/4.2 (https://github.com/acdh-oeaw/uriNormalizer; mzoltak@oeaw.ac.at)';
+    const RULES_RESOLVER = [[
+        'match'   => '^.*$',
+        'replace' => '\\0',
+        'resolve' => '\\0',
+        'format'  => '*/*',
+    ]];
 
     static private self $obj;
 
