@@ -637,4 +637,14 @@ class UriNormalizerTest extends \PHPUnit\Framework\TestCase {
         $this->assertEquals("Failed to fetch data from $url with status code 404", $r1->getMessage());
         $this->assertLessThan(($t1 - $t0) / 10, $t2 - $t1);
     }
+    
+    /**
+     * 
+     * @depends testInit
+     */
+    public function testNotUri(): void {
+        $this->expectException(UriNormalizerException::class);
+        $this->expectExceptionMessage('just a string is not an URI');
+        UriNormalizer::gNormalize('just a string');
+    }
 }

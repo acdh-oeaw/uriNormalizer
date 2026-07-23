@@ -235,6 +235,7 @@ class UriNormalizer {
      */
     public function normalizeNN(NamedNodeInterface | string $uri,
                                 bool $requireMatch = true): NamedNodeInterface {
+        $this->validateUri($uri);
         if (is_string($uri)) {
             $uri = $this->dataFactory::namedNode($uri);
         }
@@ -311,6 +312,7 @@ class UriNormalizer {
      */
     public function resolve(NamedNodeInterface | string $uri): Request {
         $uri      = (string) $uri;
+        $this->validateUri($uri);
         $cacheKey = 'r:' . $uri;
         $result   = isset($this->cache) ? $this->cache->get($cacheKey, null) : null;
         if ($result instanceof Exception) {
@@ -349,6 +351,7 @@ class UriNormalizer {
      */
     public function fetch(NamedNodeInterface | string $uri): DatasetNode {
         $uri      = (string) $uri;
+        $this->validateUri($uri);
         $cacheKey = 'f:' . $uri;
         $result   = isset($this->cache) ? $this->cache->get($cacheKey, null) : null;
         if ($result instanceof Exception) {
@@ -501,6 +504,13 @@ class UriNormalizer {
         if (isset($this->cache)) {
             $this->cache->set($key1, $value);
             $this->cache->set($key2, $value);
+        }
+    }
+
+    private function validateUri(NamedNodeInterface | string $uri): void {
+        $uri = (string) $uri;
+        if (!str_starts_with($uri, 'http')) {
+            throw new UriNormalizerException("$uri is not an URI", uri: $uri);
         }
     }
 }
